@@ -59,10 +59,11 @@ for abi in "${abis[@]}"; do
     *) echo "MSIME_ANDROID_ABIS: unsupported ABI $abi (supported: arm64-v8a, x86_64)" >&2; exit 1 ;;
   esac
 done
-# 瘦包只能是 arm64-v8a 单 ABI：资源包 voice-runtime 只取 .aar 里 arm64-v8a 的两个库（resources/voice-runtime-android.lock.json），x86_64 上下载下来也加载不了，离线识别永远失败。
+# 瘦包只在 arm64-v8a 上发布：资源包 voice-runtime 只取 .aar 里 arm64-v8a 的两个库（resources/voice-runtime-android.lock.json），x86_64 上下载下来也加载不了，离线识别永远失败。
+# fork 自用：CI 的 x86_64 模拟器要装同一份 omit-on-demand 瘦包做行为验收，这里改成只警告不拦下——那个 APK 只用于设备验收，
+# 不发布，语音运行库在 x86_64 上加载不了属于预期。
 if [ "$omit_on_demand" = 1 ] && [ "${abis[*]}" != arm64-v8a ]; then
-  echo "MSIME_ANDROID_OMIT_ON_DEMAND=1 builds arm64-v8a only (the voice-runtime pack carries arm64-v8a libraries), not MSIME_ANDROID_ABIS=${abis[*]}" >&2
-  exit 1
+  echo "::warning::omit-on-demand 瘦包在 ${abis[*]} 上只用于设备验收：voice-runtime 资源包只有 arm64-v8a 库，这个 APK 的离线识别不可用"
 fi
 for abi in "${abis[@]}"; do bash platforms/android/build-native.sh "$abi" ${native_flags[@]+"${native_flags[@]}"}; done
 abi_list=$(IFS=,; echo "${abis[*]}")
