@@ -280,7 +280,7 @@ struct Config {
 }
 impl Default for Config {
     fn default() -> Self {
-        Self { enabled: true }
+        Self { enabled: false }
     }
 }
 
