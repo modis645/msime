@@ -232,8 +232,7 @@ public final class KeyboardFragment extends HomeTabFragment {
         row(typing, PageId.LEXICON, R.drawable.ic_ms_menu_book);
         row(typing, PageId.PHRASES, R.drawable.ic_ms_chat);
         HomeNavGroup ai = HomeNavGroup.add(rows);
-        row(ai, PageId.AI_SETTINGS, R.drawable.ic_ms_star);
-        // 插件和 AI 一样是「工具」：共享设置页把它们放在同一组（`settings-page-registry.ts` 的「工具」）。
+        // AI 润色与回复整页删除，这一组只剩插件。
         row(ai, PageId.PLUGINS, R.drawable.ic_ms_extension);
         HomeNavGroup other = HomeNavGroup.add(rows);
         row(other, PageId.VOICE, R.drawable.ic_ms_mic);
