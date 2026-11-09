@@ -81,14 +81,15 @@ jobs:
       - name: Route resource downloads through the project mirror
         # fork 构建实测：从 GitHub 托管 runner 拉 msime-dictionary 的 Release 资产稳定 504（两次都停在
         # 同一个 msime-pinyin.db）。项目自带的 dl.msime.app 镜像（Cloudflare R2 前的 Worker）提供同一批字节，
-        # 只改锁文件里的 url 前缀，sha256 与 size 不动，完整性校验照旧。
+        # 只改 artifacts 里的 "url" 字段；"repository"、"sha256"、"size" 一律不动，完整性校验照旧。
         run: |
           set -euo pipefail
-          find resources -name '*.json' -print0 | xargs -0 grep -l 'https://github.com/metasequoiaime/msime-dictionary' \
+          find resources -name '*.lock.json' -print0 | xargs -0 grep -l '"url"' \
             | while read -r file; do
-                sed -i 's#https://github\.com/metasequoiaime/msime-dictionary#https://dl.msime.app/gh/https://github.com/metasequoiaime/msime-dictionary#g' "$file"
+                sed -i -E 's#"url":([[:space:]]*)"https://github\.com/#"url":\1"https://dl.msime.app/gh/https://github.com/#g' "$file"
               done
           echo "rewritten files: $(grep -rl 'dl.msime.app' resources | wc -l)"
+          echo "repository fields still original: $(grep -rc '"repository"' resources/*.json resources/editions/*.json 2>/dev/null | grep -v ':0' | wc -l)"
       - name: Build native Android host
         # 正式版、beta、nightly 和 publish=false 的构建一律用仓库 secrets 里的发布密钥签名（与 platforms/android/scripts/signing.sh 同一规则）：六个版本、各次 nightly 和正式包证书相同，可以互相覆盖安装。每个矩阵 job 自己从 secret 解出密钥放进 $RUNNER_TEMP，用完即删；密钥不经 workflow artifact 或缓存在 job 之间传递。
         env:
