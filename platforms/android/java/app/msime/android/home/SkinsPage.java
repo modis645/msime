@@ -96,7 +96,7 @@ public final class SkinsPage extends ReloadingDetailPage {
         tabs.setFillWidth(true);
         tabs.setMinimumHeight(DimensionPolicy.pixels(context, 40));
         ViewPolicy.setBackground(tabs, DrawablePolicy.pill(ThemeColorPolicy.card(context)));
-        tabs.setOptions(List.of("内置", "我的", "社区"), section);
+        tabs.setOptions(List.of("内置", "我的"), section);
         tabs.setOnSelect(index -> {
             section = index;
             renderSection();
