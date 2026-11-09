@@ -106,6 +106,13 @@ jobs:
           # 先生成资源再解出密钥：install_resources 是一轮完整的 cargo 构建（含第三方 build.rs），密钥文件只在 build-apk.sh 运行期间存在。
           mkdir -p target/resources
           resource_dir="$(cargo run --quiet -p msime-client-core --example install_resources -- target/resources)"
+          # fork 自用：拼音瘦包按词表白名单裁词库（单字全留），并去掉 trigram 表——引擎读不到该表时静默
+          # 回退成只用 bigram，不缺功能。必须放在 build-apk.sh 之前：verify_resources 与 host-api 内嵌的
+          # 都是 resources/editions/pinyin.lock.json，锁跟着重编才能与实包一致。
+          if [[ "$MSIME_EDITION" == pinyin ]]; then
+            python3 platforms/android/scripts/slim_dictionary.py "$resource_dir" platforms/android/slim-words.txt \
+              --drop msime-trigram.bin --lock resources/editions/pinyin.lock.json
+          fi
           # fork 自用：仓库还没有发布密钥 secret 时退回 signing.sh 的开发密钥，只为量体积与自测；
           # 拿到自带 keystore（H5）后把两个 secret 配上，这一段自然走发布密钥，不需要再改代码。
           if [[ -n "$RELEASE_KEYSTORE_BASE64" && -n "$MSIME_ANDROID_RELEASE_KEYSTORE_PASSWORD" ]]; then
