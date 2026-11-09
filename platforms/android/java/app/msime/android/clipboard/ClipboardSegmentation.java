@@ -4,6 +4,8 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 剪贴板「分词」：把一条历史切成可以逐个点选的词片，再把点选的词片按原来的顺序拼回去（#5645）。
@@ -17,6 +19,13 @@ public final class ClipboardSegmentation {
     public static final int MAX_CHARS = 2_000;
     /** 纯汉字片段超过这么多个字就拆成单字。 */
     public static final int MAX_IDEOGRAPH_RUN = 6;
+    /**
+     * 网址：整条当一个词片。`BreakIterator` 会把 `https://a.example/b?c=d` 按 `:`、`.`、`/` 切碎，
+     * 那样「保留完整网址」就做不到，所以先按这条正则把它整段认出来；只认 ASCII 部分，
+     * 碰到空格、中文或标点就在那里断开。
+     */
+    private static final Pattern URL =
+        Pattern.compile("(?:https?://|www\\.)[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+");
 
     /** 一个片段：可以点选的词片，或者两个词片之间的空白。 */
     public static final class Segment {
@@ -54,10 +63,26 @@ public final class ClipboardSegmentation {
             source = TextPolicy.clipSurrogateSafe(source, MAX_CHARS);
         }
         List<Segment> segments = new ArrayList<>();
-        words.setText(source);
+        Matcher url = URL.matcher(source);
+        int cursor = 0;
+        while (cursor < source.length()) {
+            int from = url.find(cursor) ? url.start() : source.length();
+            int to = from < source.length() ? url.end() : source.length();
+            if (from > cursor) appendWords(segments, source.substring(cursor, from), words);
+            // 网址整条一个片段：点一下整条选中，拼回去也是原来的样子。
+            if (to > from) segments.add(new Segment(source.substring(from, to), false));
+            cursor = to;
+        }
+        return segments;
+    }
+
+    /** 普通文字按词边界切；空白合成分隔片段，过长的纯汉字片段拆成单字。 */
+    private static void appendWords(List<Segment> segments, String text, BreakIterator words) {
+        if (text.isEmpty()) return;
+        words.setText(text);
         int start = words.first();
         for (int end = words.next(); end != BreakIterator.DONE; start = end, end = words.next()) {
-            String piece = source.substring(start, end);
+            String piece = text.substring(start, end);
             if (TextPolicy.blank(piece)) {
                 appendSeparator(segments, piece);
             } else if (isIdeographRun(piece) && TextPolicy.codePointLength(piece) > MAX_IDEOGRAPH_RUN) {
@@ -70,7 +95,6 @@ public final class ClipboardSegmentation {
                 segments.add(new Segment(piece, false));
             }
         }
-        return segments;
     }
 
     /** 可点选的词片数。 */
