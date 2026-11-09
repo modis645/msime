@@ -237,7 +237,7 @@ public final class AndroidLocalSettings {
         bool(SPACE_VOICE, true, true);
         choice(KEY_ANIMATION, "none", true, "none", "bounce", "ripple", "glow", "lift");
         bool(TOOLBAR_PHRASE, true, true);
-        bool(TOOLBAR_SCHEME, true, true);
+        bool(TOOLBAR_SCHEME, false, true);
         bool(TOOLBAR_HIDDEN, false, true);
         bool(LONG_SPACE_LAYOUT, false, false);
         choice(HANDWRITING_MODE, "overlap", true, "single", "overlap", "line");
@@ -302,7 +302,7 @@ public final class AndroidLocalSettings {
             KeyboardAdjustPolicy.MIN_WIDTH_PERCENT, KeyboardAdjustPolicy.MAX_WIDTH_PERCENT, 1);
         integer(KEYBOARD_POSITION_X, KeyboardAdjustPolicy.DEFAULT_POSITION, false, 0, KeyboardAdjustPolicy.MAX_POSITION, 1);
         bool(DEVELOPER_DEBUG_OVERLAY, false, false);
-        bool(DEVELOPER_LOGGING_ENABLED, true, false);
+        bool(DEVELOPER_LOGGING_ENABLED, false, false);
         choice(DEVELOPER_LOG_LEVEL, "debug", false, "error", "warn", "info", "debug");
         bool(DEVELOPER_INPUT_LOG, false, false);
         text(CLIPBOARD_EXPORT_TREE, "", false,
@@ -312,10 +312,10 @@ public final class AndroidLocalSettings {
         text(DIAGNOSTICS_EXPORT_TREE, "", false,
             value -> value.length() <= 8192 && (value.isEmpty() || value.startsWith("content://")) ? value : null);
         choice(MCP_RETENTION, "one_day", false, "one_hour", "one_day", "seven_days");
-        bool(MCP_CRASH_LOGS, true, false);
-        bool(MCP_PERFORMANCE_LOGS, true, false);
+        bool(MCP_CRASH_LOGS, false, false);
+        bool(MCP_PERFORMANCE_LOGS, false, false);
         bool(MCP_INPUT_EVENTS, false, false);
-        bool(MCP_CONFIG_SNAPSHOT, true, false);
+        bool(MCP_CONFIG_SNAPSHOT, false, false);
     }
 
     private static void bool(String key, boolean fallback, boolean synced) {
