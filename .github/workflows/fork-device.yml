@@ -105,7 +105,10 @@ jobs:
           serial="$SERIAL"
           package="$(python3 platforms/android/scripts/edition_android.py field --edition "$MSIME_EDITION" application_id)"
           apk="target/android/$(python3 platforms/android/scripts/edition_android.py field --edition "$MSIME_EDITION" apk_name).apk"
-          ime_id="$package/.MSIMEInputService"
+          # 清单里服务的类名是绝对名 app.msime.android.MSIMEInputService（Java 的 namespace 不跟
+          # applicationId 变），所以 ime id 不能写成 `/.MSIMEInputService`，那样系统报 Unknown input method。
+          ime_id="$package/app.msime.android.MSIMEInputService"
+          home="$package/app.msime.android.home.HomeActivity"
           echo "package=$package apk=$apk"
           ls -l "$apk"
 
@@ -124,7 +127,7 @@ jobs:
           grep -qx "$ime_id" target/android/ime-list.txt
 
           # 首启：HomeActivity 起来后会把词库解到私有目录，等到 /data 余量稳定为止。
-          "$adb" -s "$serial" shell am start -W -n "$package/$package.home.HomeActivity" || true
+          "$adb" -s "$serial" shell am start -W -n "$home" || true
           stable=0; prev=-1
           for i in $(seq 1 60); do
             sleep 5
