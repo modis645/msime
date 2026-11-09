@@ -61,6 +61,16 @@ public final class ClipboardSegmentationSmoke {
         check("北京".equals(ClipboardSegmentation.join(chinese, select(chinese, "北京", "北", "京"))),
             "picked Chinese pieces join without separators");
 
+        // 网址整条是一个词片，不被 `:`、`.`、`/` 切碎；选它拼回去就是原地址。
+        String link = "看这个 https://msime.app/docs/install?host=android&v=2 。";
+        List<Segment> urls = segment(link);
+        check(concatenated(urls).equals(link), "URL sample still covers the text");
+        String picked = null;
+        for (Segment piece : urls) if (piece.text().startsWith("https://")) picked = piece.text();
+        check("https://msime.app/docs/install?host=android&v=2".equals(picked), "the whole URL stays one piece");
+        check("https://msime.app/docs/install?host=android&v=2".equals(
+            ClipboardSegmentation.join(urls, select(urls, picked))), "picking the URL gives it back unchanged");
+
         // 代理对不从中间切开；超长文字只切开头。
         String emoji = "🌲".repeat(ClipboardSegmentation.MAX_CHARS);
         check(ClipboardSegmentation.truncated(emoji), "over-long text is truncated");
