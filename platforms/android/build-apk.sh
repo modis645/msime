@@ -26,7 +26,7 @@ if [ "$omit_on_demand" = 1 ]; then
     echo "MSIME_REQUIRE_LANGUAGE_DICTIONARIES=1 contradicts MSIME_ANDROID_OMIT_ON_DEMAND=1, which leaves the language dictionaries to download on demand" >&2
     exit 1
   fi
-  verify_flags=(--omit-on-demand --platform android --edition "$edition")
+  verify_flags=(--omit-on-demand --platform android)
   native_flags=(--omit-voice-runtime)
 elif [ "$omit_on_demand" != 0 ]; then
   echo "MSIME_ANDROID_OMIT_ON_DEMAND must be 0 or 1" >&2
@@ -48,7 +48,7 @@ tools_dir="$android_sdk/build-tools/35.0.0"
 # partially installed SDK fails before Gradle starts resolving dependencies.
 android_jar="$android_sdk/platforms/android-36/android.jar"
 [[ -f "$android_jar" && -x "$tools_dir/d8" ]] || { echo "Android API 36 platform and build-tools 35 required" >&2; exit 1; }
-# 带 --omit-on-demand 时按本版本自己的锁校验目录（--edition），缺席的按需组整体放行，输出的只是随包的其余文件名。
+# 带 --omit-on-demand 时完整的源目录照样整体校验，输出的只是去掉日文词典那一组和五笔码表后的文件名。
 artifacts=$(cargo run --quiet -p msime-client-core --example verify_resources --locked -- ${verify_flags[@]+"${verify_flags[@]}"} "$resource_dir")
 # 默认只构建 arm64-v8a：这个包面向的手机都是 arm64，多带一份 x86_64 原生库会让 APK 大约翻倍。MSIME_ANDROID_ABIS（空格或逗号分隔，例如 "arm64-v8a x86_64"）可以为 x86_64 模拟器加上 x86_64；Gradle 的 abiFilters 经 -PmsimeAbis 收到同一份列表，第三方库（ML Kit）也按它过滤。
 read -r -a abis <<< "$(tr ',' ' ' <<< "${MSIME_ANDROID_ABIS:-arm64-v8a}")"
@@ -59,11 +59,10 @@ for abi in "${abis[@]}"; do
     *) echo "MSIME_ANDROID_ABIS: unsupported ABI $abi (supported: arm64-v8a, x86_64)" >&2; exit 1 ;;
   esac
 done
-# 瘦包只在 arm64-v8a 上发布：资源包 voice-runtime 只取 .aar 里 arm64-v8a 的两个库（resources/voice-runtime-android.lock.json），x86_64 上下载下来也加载不了，离线识别永远失败。
-# fork 自用：CI 的 x86_64 模拟器要装同一份 omit-on-demand 瘦包做行为验收，这里改成只警告不拦下——那个 APK 只用于设备验收，
-# 不发布，语音运行库在 x86_64 上加载不了属于预期。
+# 瘦包只能是 arm64-v8a 单 ABI：资源包 voice-runtime 只取 .aar 里 arm64-v8a 的两个库（resources/voice-runtime-android.lock.json），x86_64 上下载下来也加载不了，离线识别永远失败。
 if [ "$omit_on_demand" = 1 ] && [ "${abis[*]}" != arm64-v8a ]; then
-  echo "::warning::omit-on-demand 瘦包在 ${abis[*]} 上只用于设备验收：voice-runtime 资源包只有 arm64-v8a 库，这个 APK 的离线识别不可用"
+  echo "MSIME_ANDROID_OMIT_ON_DEMAND=1 builds arm64-v8a only (the voice-runtime pack carries arm64-v8a libraries), not MSIME_ANDROID_ABIS=${abis[*]}" >&2
+  exit 1
 fi
 for abi in "${abis[@]}"; do bash platforms/android/build-native.sh "$abi" ${native_flags[@]+"${native_flags[@]}"}; done
 abi_list=$(IFS=,; echo "${abis[*]}")
@@ -113,19 +112,8 @@ done
 cp resources/helpcodes/ENGINE-NOTICE.md "$assets/helpcodes/NOTICE.md"
 cp resources/helpcodes/NOTICE.md "$assets/helpcodes/NOTICE-jiajia.md"
 cp resources/helpcodes/NOTICE-wubi86.md "$assets/helpcodes/NOTICE-wubi86.md"
-# 内置按键音包：resources/sound-packs 里 `mode = "keys"` 的包整目录打进 assets/sound-packs（样本连同写着许可的 plugin.toml），Bootstrap 解到 files/sound-packs，键盘经 NativeClient.keySoundPack 校验后播放。旋律包和音乐包 Android 不播，不打包。
-mkdir -p "$assets/sound-packs"
-for pack_dir in resources/sound-packs/*/; do
-  pack=$(basename "$pack_dir")
-  grep -qx 'kind = "sound"' "$pack_dir/plugin.toml" || continue
-  grep -qx 'mode = "keys"' "$pack_dir/plugin.toml" || continue
-  cp -R "${pack_dir%/}" "$assets/sound-packs/$pack"
-done
-[ -f "$assets/sound-packs/default/plugin.toml" ] || { echo "the default key sound pack was not packaged" >&2; exit 1; }
-# 水杉娘表情包：resources/stickers/shuishan 整个目录（manifest.json 和各张 WebP）原样打进 assets/stickers/shuishan，键盘表情面板直接从 assets 读（ImeStickers），不解包到 filesDir。
-mkdir -p "$assets/stickers"
-cp -R resources/stickers/shuishan "$assets/stickers/shuishan"
-[ -f "$assets/stickers/shuishan/manifest.json" ] || { echo "the shuishan sticker pack was not packaged" >&2; exit 1; }
+# 按键音包不随包：内置音效整块不要（用户明确不需要贴纸和音效，省下约 0.45 MB 压缩体积）。Bootstrap 的 installSoundPacks 在 assets 里读不到包时只是空转，键盘回落到系统按键音；按键音默认关闭。
+# 贴纸不随包：66 张 webp 整块不要（约 1.9 MB 压缩体积）。ImeStickers 读不到 manifest 时 pack 为 null，表情面板不显示贴纸分类，其余分类照常。
 # 符号返回栏的两张指引插图独立打包，不加入可发送贴纸的清单。
 mkdir -p "$assets/symbol-return"
 cp platforms/android/assets/symbol-return/left.webp platforms/android/assets/symbol-return/right.webp "$assets/symbol-return/"
@@ -254,10 +242,9 @@ unzip -p "$output" "${entry_prefix}assets/cantonese-shuangpin-scheme-NOTICE.txt"
   echo "The Cantonese shuangpin credit is missing from the package or differs" >&2; exit 1;
 }
 apk_entries=$(unzip -Z1 "$output" | sed -n "s|^$entry_prefix||p")
-# 表情包目录里的每个文件都要进最终包：少一张图，网格里就是一个空格子，点了也发不出去。
-for sticker in resources/stickers/shuishan/*; do
-  grep -qxF "assets/stickers/shuishan/$(basename "$sticker")" <<< "$apk_entries" || { echo "$output has no assets/stickers/shuishan/$(basename "$sticker")" >&2; exit 1; }
-done
+# 贴纸与按键音包这一版不再打包，产物里也不该有：混进来就说明暂存段又被加回去了。
+if grep -q '^assets/stickers/' <<< "$apk_entries"; then echo "$output still carries sticker assets" >&2; exit 1; fi
+if grep -q '^assets/sound-packs/' <<< "$apk_entries"; then echo "$output still carries built-in key sound packs" >&2; exit 1; fi
 for image in left right; do
   grep -qxF "assets/symbol-return/$image.webp" <<< "$apk_entries" || { echo "$output has no symbol-return/$image.webp" >&2; exit 1; }
 done
