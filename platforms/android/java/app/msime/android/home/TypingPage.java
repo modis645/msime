@@ -400,10 +400,6 @@ public final class TypingPage extends ReloadingDetailPage {
         // 「翻译范围」紧跟在「候选词翻译」下面，与共享设置页相同；候选词翻译关着时置灰，存的值不动。
         CandidateTranslationPolicy.Scope scope =
             CandidateTranslationPolicy.Scope.from(preferences.opt(CandidateTranslationPolicy.Scope.KEY));
-        translation.nav(CandidateTranslationPolicy.Scope.TITLE, null,
-            scope.title(), translationsOn ? () -> pickTranslationScope(scope) : null).help(CandidateTranslationPolicy.Scope.DESCRIPTION);
-        translation.nav("翻译服务", null, null,
-            () -> SettingsNavigator.open(requireContext(), PageId.TRANSLATION_SERVICE, null)).help("离线释义查不到的词用它补上译文");
         InputFeatureToggle gloss = InputFeatureToggle.CANDIDATE_ENGLISH_GLOSS;
         boolean glossOn = preferences.optBoolean(gloss.key(), gloss.enabledByDefault());
         String targetLanguage = InputViewValuePolicy.textOr(preferences, "translation_target_language", "en");
