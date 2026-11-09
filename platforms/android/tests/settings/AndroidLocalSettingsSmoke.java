@@ -127,10 +127,10 @@ public final class AndroidLocalSettingsSmoke {
             "clipboard delete authentication stays on this device");
         check(!settings.bool(AndroidLocalSettings.DEVELOPER_INPUT_LOG), "input log default");
         check("one_day".equals(settings.choice(AndroidLocalSettings.MCP_RETENTION)), "retention default");
-        check(settings.bool(AndroidLocalSettings.MCP_CRASH_LOGS), "crash logs default");
-        check(settings.bool(AndroidLocalSettings.MCP_PERFORMANCE_LOGS), "perf logs default");
+        check(!settings.bool(AndroidLocalSettings.MCP_CRASH_LOGS), "crash logs default");
+        check(!settings.bool(AndroidLocalSettings.MCP_PERFORMANCE_LOGS), "perf logs default");
         check(!settings.bool(AndroidLocalSettings.MCP_INPUT_EVENTS), "input events default off");
-        check(settings.bool(AndroidLocalSettings.MCP_CONFIG_SNAPSHOT), "config snapshot default");
+        check(!settings.bool(AndroidLocalSettings.MCP_CONFIG_SNAPSHOT), "config snapshot default");
         check(settings.explicit().isEmpty(), "defaults carry no explicit values");
         // 每一项的默认值本身必须合规。
         for (AndroidLocalSettings.Spec spec : AndroidLocalSettings.specs().values()) {
