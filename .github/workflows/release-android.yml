@@ -120,7 +120,7 @@ jobs:
           # 拿到自带 keystore（H5）后把两个 secret 配上，这一段自然走发布密钥，不需要再改代码。
           if [[ -n "$RELEASE_KEYSTORE_BASE64" && -n "$MSIME_ANDROID_RELEASE_KEYSTORE_PASSWORD" ]]; then
             export MSIME_ANDROID_RELEASE_KEYSTORE="$RUNNER_TEMP/msime-release.p12"
-            trap 'rm -f "$MSIME_ANDROID_RELEASE_KEYSTORE"' EXIT
+            trap 'rm -f "$RUNNER_TEMP/msime-release.p12"' EXIT
             printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$MSIME_ANDROID_RELEASE_KEYSTORE"
             # fork 自用：signing.sh 固定按别名 msime-release 取密钥，secret 里那把库别名不对会直接让整轮构建失败。
             # 这里先自检一次，别名不在就发警告并退回开发密钥，只影响自测，不浪费一轮构建。
