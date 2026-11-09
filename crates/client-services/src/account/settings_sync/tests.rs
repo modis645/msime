@@ -948,7 +948,7 @@ fn local_values() -> BTreeMap<String, AccountPreferenceValue> {
             String("ripple".into()),
         ),
         ("platform.android.toolbar_phrase".to_owned(), Boolean(false)),
-        ("platform.android.toolbar_scheme".to_owned(), Boolean(false)),
+        ("platform.android.toolbar_scheme".to_owned(), Boolean(true)),
         ("platform.android.toolbar_hidden".to_owned(), Boolean(true)),
         (
             "platform.android.handwriting_mode".to_owned(),
