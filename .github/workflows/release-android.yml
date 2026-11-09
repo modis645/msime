@@ -86,7 +86,7 @@ jobs:
           set -euo pipefail
           find resources -name '*.lock.json' -print0 | xargs -0 grep -l '"url"' \
             | while read -r file; do
-                sed -i -E 's#"url":([[:space:]]*)"https://github\.com/#"url":\1"https://dl.msime.app/gh/https://github.com/#g' "$file"
+                sed -i -E 's#"url":([[:space:]]*)"https://github\.com/(metasequoiaime/msime-dictionary|metasequoiaime/chinese-ime-lm|k2-fsa/sherpa-onnx)/#"url":\1"https://dl.msime.app/gh/https://github.com/\2/#g' "$file"
               done
           echo "rewritten files: $(grep -rl 'dl.msime.app' resources | wc -l)"
           echo "repository fields still original: $(grep -rc '"repository"' resources/*.json resources/editions/*.json 2>/dev/null | grep -v ':0' | wc -l)"
