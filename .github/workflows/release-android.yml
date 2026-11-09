@@ -148,6 +148,8 @@ jobs:
   # 发布前在模拟器上装同一个提交打出的包跑一遍（API 28 和 35），不过就不发。0.3.0 编译、lint 全绿，装到设备上却准备不了词库。这里用开发密钥另打 x86_64 包，不接触发版密钥。
   device:
     needs: source
+    # fork 自用：只有真正发布时才跑模拟器冒烟，平时省 30-50 分钟。
+    if: ${{ inputs.publish }}
     uses: ./.github/workflows/android-device.yml
     with:
       ref: ${{ needs.source.outputs.sha }}
