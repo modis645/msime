@@ -36,7 +36,7 @@ public final class KeyboardFeedbackStoreSmoke {
         check(unknownWire.hapticStrength() == HapticStrength.MEDIUM);
         KeyboardFeedbackStore.Settings malformedWire = KeyboardFeedbackStore.fromValues(
             "false", Integer.valueOf(1), Integer.valueOf(255));
-        check(malformedWire.soundEnabled() && !malformedWire.hapticsEnabled()
+        check(!malformedWire.soundEnabled() && !malformedWire.hapticsEnabled()
                 && malformedWire.hapticStrength() == HapticStrength.MEDIUM);
         try {
             Path root = Files.createTempDirectory("keyboard-feedback-root");
