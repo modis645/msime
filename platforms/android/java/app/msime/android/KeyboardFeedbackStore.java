@@ -88,7 +88,7 @@ public final class KeyboardFeedbackStore {
     public static Settings fromValues(Object soundEnabled, Object hapticsEnabled,
                                       Object hapticStrength) {
         String strength = hapticStrength instanceof String ? (String) hapticStrength : "medium";
-        return new Settings(JsonPolicy.strictBoolean(soundEnabled, true),
+        return new Settings(JsonPolicy.strictBoolean(soundEnabled, false),
             JsonPolicy.strictBoolean(hapticsEnabled, false),
             KeyboardFeedbackPreferences.strength(strength));
     }
@@ -101,9 +101,9 @@ public final class KeyboardFeedbackStore {
             .toString();
     }
 
-    // Sound on, haptics off, medium strength: the same values decode() uses for absent fields.
+    // Sound off, haptics off, medium strength: the same values decode() uses for absent fields.
     private static Settings defaults() {
-        return new Settings(true, false, KeyboardFeedbackPreferences.HapticStrength.MEDIUM);
+        return new Settings(false, false, KeyboardFeedbackPreferences.HapticStrength.MEDIUM);
     }
 
     private static Path file(Context context) {
