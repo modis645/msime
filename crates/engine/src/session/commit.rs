@@ -362,12 +362,12 @@ impl InputSession {
             return committed(text, diagnostic);
         }
 
-        // A user row of three or more characters answering the whole composition is almost always a sentence stored by sentence learning; counting it as one word would teach the model a sentence as a word. User rows come back as Database like shipped ones, so the journal's insert record tells them apart; checked last because it reads a file.
+        // A user row of five or more characters answering the whole composition is almost always a sentence stored by sentence learning; counting it as one word would teach the model a sentence as a word. User rows come back as Database like shipped ones, so the journal's insert record tells them apart; checked last because it reads a file. 三、四字自造词（成语、三字词）不在这条里：它们是用户真的要用的一个词，按词学才记得住「图财害命 → 中医药」这种搭配。
         let learned_sentence_word = has_dictionary_reading
             && self.personal_context_applies()
             && !self.chain.same_composition
             && !selected.canonical_pinyin.is_empty()
-            && count_utf8_chars(&selected.word) >= 3
+            && count_utf8_chars(&selected.word) >= 5
             && self.selection_completes_composition(&selected)
             && {
                 let mut segments = split_segments(&selected.canonical_pinyin);
