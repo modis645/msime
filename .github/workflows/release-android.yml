@@ -19,7 +19,7 @@ concurrency: {group: release-android, cancel-in-progress: false}
 jobs:
   # Resolves the dispatched commit up front, so every edition and the publish job (tag target, release notes) use the same source even if the branch moves during the run.
   source:
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        edition: [full, wubi, pinyin, japanese, vietnamese, tibetan]
+        edition: [pinyin]
     # full 和拼音版打瘦包（build-apk.sh 的 MSIME_ANDROID_OMIT_ON_DEMAND）：日文词典、五笔码表、粤拼注音笔画语言词库、非英文离线释义和本地语音运行库都不进 APK，由应用在用户需要时作为资源包下载。日文版的主词库就是日文词典，五笔版的默认方案离不开五笔码表，其余版本没有这些附加资源，照旧按自己的资源锁打包。
     env:
       MSIME_ANDROID_OMIT_ON_DEMAND: "${{ (matrix.edition == 'full' || matrix.edition == 'pinyin') && '1' || '0' }}"
@@ -201,7 +201,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [full, wubi, pinyin, japanese, vietnamese, tibetan]
+        edition: [pinyin]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
