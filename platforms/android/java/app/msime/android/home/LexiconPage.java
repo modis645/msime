@@ -48,7 +48,7 @@ import org.json.JSONObject;
  */
 public final class LexiconPage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
-        return java.util.List.of("已安装", "社区", "学习");
+        return java.util.List.of("已安装", "学习");
     }
 
     private static final String BUILTIN_KIND = "pinyin";
@@ -194,21 +194,6 @@ public final class LexiconPage extends ReloadingDetailPage {
         GroupCard sync = GroupCard.add(sectionColumn(target, "已安装"), "同步");
         sync.nav(PageId.DICTIONARY_SYNC.title(), null, null,
             () -> SettingsNavigator.open(context, PageId.DICTIONARY_SYNC, null)).help("「我的词条」经自己的 WebDAV 网盘在设备之间同步");
-
-        GroupCard community = GroupCard.add(sectionColumn(target, "社区"), "发现词库").withDividers(58);
-        List<CommunityCatalog.Item> items = discover;
-        if (items == null) {
-            community.note(discoverFailure == null ? "正在读取社区词库…" : discoverFailure);
-        } else if (items.isEmpty()) {
-            community.note("社区里还没有词库。");
-        } else {
-            for (CommunityCatalog.Item item : items) community.addView(discoverRow(item, current.view()));
-        }
-        // 这里只列前几个，完整列表（搜索、详情、举报）压在词库页上面，返回回到这里。
-        community.nav("浏览更多词库", null, null,
-            () -> CommunityFragment.browse(context, CommunityRequest.Kind.DICTIONARY)).help("搜索社区里的全部词库");
-        community.nav("提交缺失词条", null, null,
-            () -> AboutPage.openLink(context, "https://msime.app/words/")).help("前往官网填写，审核后随公共词库更新；个人学习不会自动公开");
 
         GroupCard learning = GroupCard.add(sectionColumn(target, "学习"), "学习");
         InputFeatureToggle toggle = InputFeatureToggle.LEARNING;
