@@ -136,3 +136,14 @@ echo "Android native libraries built: $output (not yet device-verified)"
 python3 scripts/crash-symbols.py collect --platform android --version "${MSIME_ANDROID_VERSION:-$(cat platforms/android/version.txt)}" \
   --root "$output" --tool-prefix "$toolchain/bin/llvm-" \
   --output "target/android-symbols/android-${MSIME_ANDROID_VERSION:-$(cat platforms/android/version.txt)}-${MSIME_EDITION:-full}-$abi-${MSIME_BUILD_RUN:-${GITHUB_RUN_ID:-local}}-${GITHUB_RUN_ATTEMPT:-1}.zip"
+
+# fork 自用：崩溃符号已由上面的 collect 归档到 target/android-symbols（用的是未剥离的库），
+# 这里再剥离"要打进 APK 的那一份"，安装包因此小一截，符号化仍用归档里的副本。
+# 只剥离目标 ABI 目录里的 .so，不动 NDK sysroot 与 cargo 产物；已剥离的库再剥一次也无害。
+for library in "$output"/*.so; do
+  [ -e "$library" ] || continue
+  before=$(wc -c < "$library")
+  "$toolchain/bin/llvm-strip" --strip-unneeded "$library"
+  after=$(wc -c < "$library")
+  echo "packaged library stripped: $(basename "$library") $before -> $after bytes"
+done
