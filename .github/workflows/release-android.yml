@@ -124,9 +124,15 @@ jobs:
             printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$MSIME_ANDROID_RELEASE_KEYSTORE"
             # fork 自用：signing.sh 固定按别名 msime-release 取密钥，secret 里那把库别名不对会直接让整轮构建失败。
             # 这里先自检一次，别名不在就发警告并退回开发密钥，只影响自测，不浪费一轮构建。
+            # 别名不对时先在临时副本上改名（p12 的口令当作条目口令，密钥库与条目同口令才成立），改不动才退回开发密钥。
             if ! keytool -list -keystore "$MSIME_ANDROID_RELEASE_KEYSTORE" -storetype PKCS12 -storepass "$MSIME_ANDROID_RELEASE_KEYSTORE_PASSWORD" 2>/dev/null | grep -q '^msime-release,'; then
-              echo "::warning::secret 里的密钥库没有别名 msime-release，本次退回开发密钥（产物只能自测）"
-              unset MSIME_ANDROID_RELEASE_KEYSTORE
+              entry="$(keytool -list -keystore "$MSIME_ANDROID_RELEASE_KEYSTORE" -storetype PKCS12 -storepass "$MSIME_ANDROID_RELEASE_KEYSTORE_PASSWORD" 2>/dev/null | grep 'PrivateKeyEntry' | head -1 | cut -d, -f1)"
+              if [[ -n "$entry" ]] && keytool -changealias -alias "$entry" -destalias msime-release -keystore "$MSIME_ANDROID_RELEASE_KEYSTORE" -storetype PKCS12 -storepass "$MSIME_ANDROID_RELEASE_KEYSTORE_PASSWORD" -keypass "$MSIME_ANDROID_RELEASE_KEYSTORE_PASSWORD" 2>/dev/null; then
+                echo "::warning::secret 里的密钥库别名是 $entry，已在临时副本上改名为 msime-release（证书不变）"
+              else
+                echo "::warning::secret 里的密钥库无法当作 msime-release 使用，本次退回开发密钥（产物只能自测）"
+                unset MSIME_ANDROID_RELEASE_KEYSTORE
+              fi
             fi
           else
             echo "::warning::ANDROID_RELEASE_KEYSTORE_BASE64 未配置，本次用开发密钥签名，产物只能自测、不能对外分发"
