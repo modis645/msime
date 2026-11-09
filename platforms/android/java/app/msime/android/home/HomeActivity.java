@@ -133,6 +133,9 @@ public final class HomeActivity extends AppCompatActivity {
             }, true);
 
         tabs = findViewById(R.id.home_tabs);
+        // 这一版只留「首页」和「我的」：社区与统计整块删除，menu 里去掉这两格，深链指向它们时退回当前页。
+        tabs.getMenu().removeItem(R.id.tab_community);
+        tabs.getMenu().removeItem(R.id.tab_statistics);
         // Edge-to-edge is enforced from Android 15, so the bars' insets are applied rather than
         // assumed: the tab bar keeps clear of the gesture area and the content of the status bar.
         // The splash overlay is the one full-bleed child, so the insets go on the content and the tab bar rather than on the root: padding the root would leave a strip of page colour above the splash.
@@ -550,7 +553,8 @@ public final class HomeActivity extends AppCompatActivity {
 
     /** 按下标切 tab（`HostDeepLink.TAB_*`）；切换时清空回退栈。 */
     void selectTabIndex(int index) {
-        if (!HostDeepLink.isTab(index)) return;
+        if (!HostDeepLink.isTab(index) || index >= TAB_IDS.length) return;
+        if (tabs != null && tabs.getMenu().findItem(TAB_IDS[index]) == null) { clearStack(); return; }
         openTab(TAB_IDS[index]);
     }
 
