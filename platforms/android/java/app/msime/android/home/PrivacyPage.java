@@ -67,9 +67,6 @@ public final class PrivacyPage extends ReloadingDetailPage {
         GroupCard network = GroupCard.add(sectionColumn(target, "联网"), "联网功能").withDividers(16);
         network.help(app + "本地优先：拼音、词库、自造词和输入统计都在这台设备上处理和保存。只有你打开的联网功能才会连接 api.msime.app，下面逐项列出。");
         for (InputFeatureToggle toggle : NETWORK) addToggle(network, toggle);
-        network.nav("翻译服务", null, null,
-            () -> SettingsNavigator.open(requireContext(), PageId.TRANSLATION_SERVICE, null)).help("改用小牛、腾讯或自定义（DeepLX、DeepL）服务");
-        network.help("在「翻译服务」里选了小牛、腾讯或自定义服务时，键盘会把当前一页的中文候选词直接发给你配置的第三方服务翻译，不经过水杉服务器，按该服务自己的数据政策处理；凭据只保存在本机。");
 
         GroupCard community = GroupCard.add(sectionColumn(target, "联网"), "社区");
         blockedAuthorsRow = community.nav("已屏蔽的作者", null, null, () -> CommunityBlockDialog.requireSignIn(this,
