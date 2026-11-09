@@ -211,7 +211,13 @@ impl PersonalNgramStore {
 
     fn new(user_db: &Path) -> PersonalNgramStore {
         PersonalNgramStore {
-            model: RwLock::new(PersonalNgram::new(PersonalNgramOptions::default())),
+            // 记忆灵敏度：默认 confidence_k = 8 时置信度按 c/(c+8) 涨，同一对词要出现 8 次才到
+            // 0.5 的上限，用户连续输入两三次看不到候选变化。这里降到 3，三次即到 0.5；
+            // max_confidence 仍是 0.5，静态模型的分数始终占一半以上，不会把对的词挤下去。
+            model: RwLock::new(PersonalNgram::new(PersonalNgramOptions {
+                confidence_k: 3.0,
+                ..PersonalNgramOptions::default()
+            })),
             path: user_db.to_path_buf(),
             writer: Mutex::new(Writer::default()),
             pending: Mutex::new(Vec::with_capacity(FLUSH_BATCH)),
