@@ -17,6 +17,10 @@ flavor="$(tr '[:lower:]' '[:upper:]' <<< "${edition:0:1}")${edition:1}"
 omit_on_demand=${MSIME_ANDROID_OMIT_ON_DEMAND:-0}
 verify_flags=()
 native_flags=()
+# MSIME_RESOURCES_TRIMMED=1 表示传进来的资源目录已被裁成这个版本随包交付的那部分（fork 自用的瘦包走这条）：
+# 这时第一次校验要按本版本的锁来比对，否则 full 锁比瘦目录多出被裁掉的文件，直接判 ExistingGeneration。
+trimmed_flags=()
+[ "${MSIME_RESOURCES_TRIMMED:-0}" = 1 ] && trimmed_flags=(--edition "$edition")
 if [ "$omit_on_demand" = 1 ]; then
   case "$edition" in
     full|pinyin) ;;
@@ -49,7 +53,7 @@ tools_dir="$android_sdk/build-tools/35.0.0"
 android_jar="$android_sdk/platforms/android-36/android.jar"
 [[ -f "$android_jar" && -x "$tools_dir/d8" ]] || { echo "Android API 36 platform and build-tools 35 required" >&2; exit 1; }
 # 带 --omit-on-demand 时完整的源目录照样整体校验，输出的只是去掉日文词典那一组和五笔码表后的文件名。
-artifacts=$(cargo run --quiet -p msime-client-core --example verify_resources --locked -- ${verify_flags[@]+"${verify_flags[@]}"} "$resource_dir")
+artifacts=$(cargo run --quiet -p msime-client-core --example verify_resources --locked -- ${verify_flags[@]+"${verify_flags[@]}"} ${trimmed_flags[@]+"${trimmed_flags[@]}"} "$resource_dir")
 # 默认只构建 arm64-v8a：这个包面向的手机都是 arm64，多带一份 x86_64 原生库会让 APK 大约翻倍。MSIME_ANDROID_ABIS（空格或逗号分隔，例如 "arm64-v8a x86_64"）可以为 x86_64 模拟器加上 x86_64；Gradle 的 abiFilters 经 -PmsimeAbis 收到同一份列表，第三方库（ML Kit）也按它过滤。
 read -r -a abis <<< "$(tr ',' ' ' <<< "${MSIME_ANDROID_ABIS:-arm64-v8a}")"
 [ "${#abis[@]}" -gt 0 ] || { echo "MSIME_ANDROID_ABIS names no ABI" >&2; exit 1; }
