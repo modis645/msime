@@ -231,11 +231,6 @@ public final class AccountFragment extends HomeTabFragment {
         row(group, R.drawable.ic_ms_content_paste, "云剪贴板", null,
             online == null || online.clipboard() < 0 ? null : online.clipboard() + " 条",
             () -> SettingsNavigator.open(context, PageId.CLOUD_CLIPBOARD, null));
-        // 社区作品的管理界面只在 Tauri 合包里有（P21），保留原来的跳转。
-        if (ManagementUi.available()) {
-            KeyboardSheets.help(row(group, R.drawable.ic_ms_groups, "社区作品", null, null, this::openCommunityAccount),
-                "社区作品", "发布、收藏皮肤、词库和回复");
-        }
     }
 
     /** 当前键盘明暗对应的皮肤名；设计库引用由皮肤页显示具体名字。 */
@@ -337,9 +332,6 @@ public final class AccountFragment extends HomeTabFragment {
             preferences == null ? null : () -> AppThemeSheet.show(this, preferences, this::reload));
         row(group, R.drawable.ic_ms_shield_lock, "隐私", null, "本地优先",
             () -> SettingsNavigator.open(context, PageId.PRIVACY, null));
-        group.toggle("统计页身份验证", null,
-            StatisticsAuthenticationPreference.enabled(context),
-            enabled -> StatisticsAuthenticationPreference.save(context, enabled)).help("开启后使用系统认证，5 分钟内再次进入不用重新验证；未配置锁屏凭据时直接进入");
         AppIconStyle icon = AppIcons.selected(context);
         group.addView(KeyboardSheets.iconNavRow(context, context.getDrawable(AppIcons.resource(context, icon)),
             "App 图标", null, icon.title(), this::showIcons));
