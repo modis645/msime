@@ -71,6 +71,9 @@ final class ClipboardTextPreview {
         scroll.setVerticalScrollBarEnabled(true);
         scroll.setScrollbarFadingEnabled(false);
         scroll.setScrollBarStyle(View.SCROLLBARS_INSIDE_INSET);
+        // 默认的滚动条只有两三像素宽，手指按不准，看起来就是「滑不动」；加粗到 8dp 才拖得住。
+        scroll.setScrollBarSize(service.pixels(8));
+        scroll.setSmoothScrollingEnabled(true);
         TextView body = new TextView(service);
         body.setText(text);
         body.setTextSize(17);
