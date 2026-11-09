@@ -83,8 +83,6 @@ jobs:
               done
           echo "rewritten files: $(grep -rl 'dl.msime.app' resources | wc -l)"
       - name: Build the slim pinyin APK
-        env:
-          MSIME_REQUIRE_WORDBOOKS: '1'
         run: |
           set -euo pipefail
           bash platforms/windows/bootstrap-vcpkg.sh
