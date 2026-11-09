@@ -33,37 +33,14 @@ public final class FunctionPanelModel {
      */
     public record Item(Id id, String label, String description, boolean toggle) {}
 
+    /** 只保留这七项：全角、中文标点、手写、语音输入、世界时钟、设置、关于（按这一顺序排一页）。 */
     private static final List<Item> ITEMS = List.of(
         toggle(Id.FULL_WIDTH, "全角", "全角"),
         toggle(Id.CHINESE_PUNCTUATION, "中文标点", "中文标点"),
-        toggle(Id.FUZZY_PINYIN, "模糊音", "模糊音"),
-        toggle(Id.TRADITIONAL, "繁体", "繁体输出"),
-        action(Id.SCHEME, "输入方式"),
         action(Id.HANDWRITING, "手写"),
-        action(Id.LOCAL_INPUT, "本地输入"),
-        new Item(Id.AI_ASSIST, "AI 辅助", "AI 回复与润色", false),
-        toggle(Id.ONE_HAND, "单手模式", "单手模式"),
-        toggle(Id.FLOATING, "浮动键盘", "浮动键盘"),
-        toggle(Id.PRIVACY, "无痕输入", "无痕输入"),
-        action(Id.KEYBOARD_HEIGHT, "键盘调整"),
-        toggle(Id.KEY_SOUND, "按键音", "按键音"),
-        toggle(Id.VIBRATION, "振动", "按键振动"),
-        action(Id.VIBRATION_STRENGTH, "振动强度"),
         action(Id.VOICE_INPUT, "语音输入"),
-        action(Id.VOICE_RESULT, "插入语音文字"),
-        action(Id.DICTIONARY, "词库"),
-        action(Id.TEXT_EDIT, "文本编辑"),
-        action(Id.TOOLBAR_EDITOR, "编辑工具栏"),
-        action(Id.COPY_DEVICE_INFO, "设备信息"),
-        action(Id.EMOJI, "表情"),
-        action(Id.CLIPBOARD, "剪贴板历史"),
         action(Id.WORLD_CLOCK, "世界时钟"),
-        action(Id.OCR, "拍照识字"),
-        // 这五项是功能面板的固定尾部；新增工具必须放在它们之前，不能改变用户熟悉的位置。
         action(Id.SETTINGS, "设置"),
-        action(Id.FEEDBACK, "反馈"),
-        action(Id.PROMOTION, "宣传"),
-        action(Id.WEBSITE, "打开官网"),
         action(Id.ABOUT, "关于"));
 
     private FunctionPanelModel() { }
