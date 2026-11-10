@@ -63,8 +63,10 @@ for abi in "${abis[@]}"; do
     *) echo "MSIME_ANDROID_ABIS: unsupported ABI $abi (supported: arm64-v8a, x86_64)" >&2; exit 1 ;;
   esac
 done
-# 瘦包只能是 arm64-v8a 单 ABI：资源包 voice-runtime 只取 .aar 里 arm64-v8a 的两个库（resources/voice-runtime-android.lock.json），x86_64 上下载下来也加载不了，离线识别永远失败。
-if [ "$omit_on_demand" = 1 ] && [ "${abis[*]}" != arm64-v8a ]; then
+# 瘦包默认只能是 arm64-v8a 单 ABI：资源包 voice-runtime 只取 .aar 里 arm64-v8a 的两个库（resources/voice-runtime-android.lock.json），x86_64 上下载下来也加载不了，离线识别永远失败。
+# MSIME_ANDROID_ALLOW_EMULATOR_ABI=1 是给 CI 模拟器验收留的出口：那时只验装包与首启，语音运行库本来就不随包，x86_64 上没有离线识别也无妨；发布包不许设它。
+if [ "$omit_on_demand" = 1 ] && [ "${abis[*]}" != arm64-v8a ] \
+    && [ "${MSIME_ANDROID_ALLOW_EMULATOR_ABI:-0}" != 1 ]; then
   echo "MSIME_ANDROID_OMIT_ON_DEMAND=1 builds arm64-v8a only (the voice-runtime pack carries arm64-v8a libraries), not MSIME_ANDROID_ABIS=${abis[*]}" >&2
   exit 1
 fi
