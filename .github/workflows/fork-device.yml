@@ -26,9 +26,6 @@ jobs:
       # 模拟器镜像是 x86_64（start-emulator.sh 按主机架构选），APK 跟着打 x86_64。
       MSIME_ANDROID_ABIS: x86_64
       MSIME_EDITION: pinyin
-      # 与发布出的瘦包同一套开关：日文词典、五笔码表、语言词库、离线释义、语音运行库都不进包。
-      # 不带这个开关时 build-apk.sh 的 verify_resources 按默认（full）锁校验目录，瘦包目录会被判缺资源。
-      MSIME_ANDROID_OMIT_ON_DEMAND: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -91,12 +88,6 @@ jobs:
           bash platforms/windows/bootstrap-vcpkg.sh
           mkdir -p target/resources
           resource_dir="$(cargo run --quiet -p msime-client-core --example install_resources --locked -- target/resources)"
-          # 下载目录（target/resources/<hash>）必须与完整锁逐字节一致，不能就地裁：
-          # 在 target/resources-slim 副本上裁，--lock 同步改写本版本的锁，host-api 内嵌的锁跟着重编。
-          rm -rf target/resources-slim
-          python3 platforms/android/scripts/slim_dictionary.py "$resource_dir" platforms/android/slim-words.txt \
-            --stage target/resources-slim --drop msime-trigram.bin --lock resources/editions/pinyin.lock.json
-          resource_dir="$(cd target/resources-slim && pwd)"
           bash platforms/android/build-apk.sh "$resource_dir"
       - name: Install, first launch, dictionary prep and real footprint on device
         run: |
