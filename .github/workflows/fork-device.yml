@@ -26,6 +26,11 @@ jobs:
       # 模拟器镜像是 x86_64（start-emulator.sh 按主机架构选），APK 跟着打 x86_64。
       MSIME_ANDROID_ABIS: x86_64
       MSIME_EDITION: pinyin
+      # 与发布出的瘦包同一套开关：日文词典、五笔码表、语言词库、离线释义、语音运行库都不进包。
+      # 不带这个开关时要现下语音运行库，托管 runner 直连 GitHub 取不到（403），构建第一步就失败。
+      MSIME_ANDROID_OMIT_ON_DEMAND: '1'
+      # 瘦包默认只打 arm64-v8a；这里要装进 x86_64 模拟器，显式放开（语音运行库不随包，模拟器上不需要）。
+      MSIME_ANDROID_ALLOW_EMULATOR_ABI: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
