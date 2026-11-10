@@ -58,6 +58,7 @@ pub(crate) fn create_session(bytes: &[u8], usage: SessionUse) -> Result<Value, S
     let sentence_model_path = options.sentence_model.clone();
     let recorded_settled_model = options.settled_model.clone();
     let phrase_preedit = options.phrase_preedit.unwrap_or(false);
+    let backspace_retreat_any_reading = options.backspace_retreat_any_reading.unwrap_or(false);
     let statistics_recorded_elsewhere = options.selection_statistics == Some(false);
     let keyboard_reranker_allowed = options.keyboard_reranker != Some(false);
     let recorded_rerank_models = options.rerank_models.clone();
@@ -173,6 +174,7 @@ pub(crate) fn create_session(bytes: &[u8], usage: SessionUse) -> Result<Value, S
     runtime.set_translation_scope_highlighted(crate::translation_scope_highlighted(&applied));
     runtime.set_phrase_preedit(phrase_preedit);
     runtime.set_backspace_reverts_selection(applied.backspace_reverts_selection);
+    runtime.set_backspace_retreat_any_reading(backspace_retreat_any_reading);
     runtime.set_escape_keeps_selected_word(applied.escape_keeps_selected_word);
     runtime.set_left_right_navigation(applied.navigation.left_right);
     runtime.set_vertical_candidates(crate::host_vertical_candidates(applied.candidate_layout));
