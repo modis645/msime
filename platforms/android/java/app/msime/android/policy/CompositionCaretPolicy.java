@@ -183,6 +183,19 @@ public final class CompositionCaretPolicy {
             : new int[] {MOVE_RIGHT, target - current};
     }
 
+    /**
+     * 点是不是落在读音最后一个字之后（含画出来的光标符之后）。读数被截短、或与按键对不上时，
+     * {@link #tapTarget} 给不出位置，但点在末尾这一段永远表示「回末尾」。
+     *
+     * @param prefixLength 画在读音前面、已经选好的那段词的长度
+     * @param display 读音本身，不含前缀和光标符
+     * @param tapped 点在读音行上换算出的字符下标
+     */
+    public static boolean tapPastEnd(int prefixLength, String display, int tapped) {
+        int shown = display == null ? 0 : display.length();
+        return tapped >= BoundsPolicy.nonNegative(prefixLength) + shown;
+    }
+
     static boolean separator(char value) {
         return value == '\'' || value == ' ';
     }
