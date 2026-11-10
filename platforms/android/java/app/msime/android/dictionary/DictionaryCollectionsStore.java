@@ -260,6 +260,29 @@ public final class DictionaryCollectionsStore {
     }
 
     /**
+     * 删掉内置词库里的一个词：个人词库编辑队列的一条请求里 `previous` 是要删的词、`replacement` 为空即删除，和 {@link #queueWord} 的加入走同一条队列。
+     *
+     * <p>集合接口的 {@link #removeWords} 只认命名词库的集合 id，内置词库没有集合 id；词库详情页默认列出的正是用户自己加或学到的词，所以按词删除走这里。键盘活着时队列稍后应用，返回还没应用的条数。
+     */
+    public static Result<Integer> removeWord(Context context, Word word) {
+        String options = hostOptions(context);
+        if (options.isEmpty()) return Result.failed(failureMessage("unavailable"));
+        try {
+            JSONObject action = action("edit").put("previous", entry(word))
+                .put("replacement", JSONObject.NULL).put("request_id", UUID.randomUUID().toString());
+            String response = NativeClient.personalDictionaryRequest(new JSONObject()
+                .put("options", new JSONObject(options)).put("action", action).toString());
+            JSONObject value = value(response);
+            if (value == null) return Result.failed(failureMessage(errorOf(response)));
+            SyncSignals.markDirty(context, SyncSwitch.DICTIONARY);
+            Integer pending = JsonPolicy.nonNegativeInteger(value.opt("pending_count"));
+            return Result.of(pending == null ? 0 : pending);
+        } catch (JSONException | RuntimeException | LinkageError error) {
+            return Result.failed(failureMessage(""));
+        }
+    }
+
+    /**
      * 把一个文件导入成新的拼音词库。
      *
      * @param format client-services 的格式名（来自 {@link View#formats}）
