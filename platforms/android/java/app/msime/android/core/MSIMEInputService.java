@@ -35,6 +35,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.text.Layout;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -62,6 +63,7 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.TextView;
 import android.widget.HorizontalScrollView;
 import android.widget.Toast;
@@ -124,6 +126,14 @@ public final class MSIMEInputService extends InputMethodService {
     // 键盘的构建、渲染与扩展点（见各类说明）；onCreate 里创建。
     ImeToolbar imeToolbar;
     ImeCompositionEditor imeCompositionEditor;
+    // 候选栏就地移光标（r19）：render 时记下读音行这一帧的换算依据，手指点上去直接换成引擎光标，不再弹放大拼写条。
+    private boolean inlineCaretTap;
+    private int tapPrefixLength;
+    private String tapDisplay = "";
+    private String tapEditing = "";
+    private String tapKeypad;
+    private int tapCaretMark = -1;
+    private int tapLastTarget = -1;
     ImeCandidates imeCandidates;
     ImeNineKeyPanel imeNineKeyPanel;
     ImeFunctionPanel imeFunctionPanel;
@@ -5296,6 +5306,30 @@ public final class MSIMEInputService extends InputMethodService {
         try {
             return apply(timedEngineCall(() -> NativeClient.command(session, code)));
         } catch (JSONException | LinkageError error) { fail(error); return true; }
+    }
+
+    /** 读音行此刻能不能就地移光标；不能时点按照旧打开放大拼写条。 */
+    boolean preeditInlineTap() {
+        return inlineCaretTap;
+    }
+
+    /**
+     * 点在读音行的 {@code x} 处：换成引擎光标（点在已选词上回开头，点在字母之间落到那个音节边界）。
+     *
+     * <p>读音被省略号截短、或读音与按键对不上时返回 false，调用方退回放大拼写条：那时这一行画的不是完整拼写，按横坐标换算出来的位置是错的。
+     */
+    boolean tapPreeditAt(TextView view, float x) {
+        if (!inlineCaretTap) return false;
+        android.text.Layout layout = view.getLayout();
+        if (layout == null || layout.getLineCount() == 0 || layout.getEllipsisCount(0) > 0) return false;
+        int target = CompositionCaretPolicy.tapTarget(tapPrefixLength, tapDisplay, tapEditing,
+            tapKeypad, tapCaretMark, view.getOffsetForPosition(x, view.getHeight() / 2f));
+        if (target < 0) return false;
+        // 拖动时同一格反复报到：位置没变就不再重写组字。
+        if (target == tapLastTarget) return true;
+        tapLastTarget = target;
+        moveCompositionCaret(target);
+        return true;
     }
 
     /** 全拼九键组字时的候选筛选（只留单字、首字笔顺前缀），响应照常经 apply 重画。 */
@@ -12528,6 +12562,14 @@ public final class MSIMEInputService extends InputMethodService {
             // 拼写已写在输入框里时读音行只画一支笔（SpellingEditIcon），点它打开放大编辑条；不再放「编辑拼写」四个字，描述仍是「编辑拼写」。
             boolean spellingEditIcon = caretEditable && !spellingDrawn && phrasePrefix.isEmpty();
             if (spellingEditIcon) displayText = "";
+            // 读音行这一帧能不能就地移光标：组字可编辑、且这一行画的正是拼写（画成笔图标时仍走放大条）。
+            inlineCaretTap = caretEditable && !spellingEditIcon;
+            tapPrefixLength = phrasePrefix.length();
+            tapDisplay = caretSpelling;
+            tapEditing = editingText;
+            tapKeypad = caretKeypad;
+            tapCaretMark = caretMark;
+            tapLastTarget = caret;
             preedit.setText(CompositionCaretSpan.mark(displayText, caretInTitle, pixels(2), pixels(2),
                 imeStyler.caretColor()));
             showSpellingEditIcon(spellingEditIcon);
