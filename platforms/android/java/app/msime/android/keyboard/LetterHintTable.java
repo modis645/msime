@@ -11,7 +11,7 @@ public final class LetterHintTable {
         Map.entry("a", "@"), Map.entry("s", "#"), Map.entry("d", "¥"), Map.entry("f", "%"),
         Map.entry("g", "&"), Map.entry("h", "*"), Map.entry("j", "("), Map.entry("k", ")"),
         Map.entry("l", "\""),
-        Map.entry("z", "~"), Map.entry("x", "…"), Map.entry("c", "、"), Map.entry("v", "?"),
+        Map.entry("z", ";"), Map.entry("x", ":"), Map.entry("c", "、"), Map.entry("v", "?"),
         Map.entry("b", "!"), Map.entry("n", "-"), Map.entry("m", "/"));
 
     private LetterHintTable() { }
