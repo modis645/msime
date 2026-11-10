@@ -38,7 +38,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * 输入页：语言与方案、中文（字符集、中英文之间加空格、拼音纠错、模糊音、云候选）、辅助码方案和翻译（候选词翻译、翻译范围、离线英文释义、目标语言）。
+ * 输入页：语言与方案、中文（字符集、中英文之间加空格、拼音纠错、模糊音）和辅助码方案。
  *
  * <p>语言与方案列表是键盘自己的方案列表 `touch_keyboard_schemes.enabled` 按方案族分组后的样子：全拼、双拼、五笔、注音、笔画、手写和粤拼各自成行，其他语言按语言成行。在一行的面板里选一个方案，经 {@link SchemePreferences#withScheme} 同时写 `scheme` 那几个键和 `touch_keyboard_schemes.selected`（并在缺失时加进 `enabled`）；「移除」把这一行的方案全部移出 `enabled`，键盘正用着它时先切回剩下的第一个方案；「添加方案」把这一行的第一个方案加进 `enabled`，不切换。英语没有自己的触屏方案（中英切换键一直在），所以不出现在列表里。
  *
@@ -48,7 +48,7 @@ import org.json.JSONObject;
  */
 public final class TypingPage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
-        return java.util.List.of("语言", "中文", "辅助码", "翻译");
+        return java.util.List.of("语言", "中文", "辅助码");
     }
 
     /** 深链参数：打开时展开「添加语言」（键盘的输入方式面板「+ 添加语言」用）。 */
@@ -109,7 +109,6 @@ public final class TypingPage extends ReloadingDetailPage {
     private static final String SAVED_IMPORT_SHUANGPIN = "helpcode_import_shuangpin";
 
     private boolean adding;
-    private boolean editingCloudCustom;
     /** 上一次渲染用的状态：下载进度只重画这一份，不必每个百分点都去读共享存储。 */
     @Nullable private State lastState;
     /** 下载进度变了就重画；某个资源包下载结束时重读一遍，换上新的安装状态。 */
@@ -155,7 +154,6 @@ public final class TypingPage extends ReloadingDetailPage {
         FirstRunPreparation.stopObserving(preparationListener);
         preparationSeen = null;
         lastState = null;
-        editingCloudCustom = false;
     }
 
     @Override protected void reload() {
@@ -355,10 +353,6 @@ public final class TypingPage extends ReloadingDetailPage {
         chinese.toggle(backspace.title(), null,
             preferences.optBoolean(backspace.key(), backspace.enabledByDefault()),
             on -> savePreferences(values -> values.put(backspace.key(), on))).help(backspace.description());
-        InputFeatureToggle cloud = InputFeatureToggle.CLOUD_CANDIDATES;
-        chinese.toggle(cloud.title(), null, preferences.optBoolean(cloud.key(), cloud.enabledByDefault()),
-            checked -> savePreferences(values -> values.put(cloud.key(), checked))).help("联网获取当前拼写的候选");
-        cloudProviderSettings(target, preferences);
         // 临时日语读日文词典；词典没在本机时 host-api 会关掉它，键盘菜单里也置灰，这里给出下载入口。和桌面一样，不会因为它自己去下载。
         if (edition.temporaryJapanese() && !state.packs().contains(KeyboardScheme.JAPANESE_PACK)) {
             packRow(chinese, state, "临时日语", "用 R 键临时输入日语要用日文词典", ResourcePacks.JAPANESE);
@@ -392,46 +386,6 @@ public final class TypingPage extends ReloadingDetailPage {
             if (shuangpin) helpcodeModeRows(aux, helpcode);
         }
 
-        GroupCard translation = GroupCard.add(sectionColumn(target, "翻译"), "翻译");
-        InputFeatureToggle translations = InputFeatureToggle.CANDIDATE_TRANSLATIONS;
-        boolean translationsOn = preferences.optBoolean(translations.key(), translations.enabledByDefault());
-        translation.toggle("候选词翻译", null,
-            translationsOn, checked -> savePreferences(values -> values.put(translations.key(), checked))).help("为候选词附上译文；联网翻译用哪个服务在下面的「翻译服务」里选");
-        // 「翻译范围」紧跟在「候选词翻译」下面，与共享设置页相同；候选词翻译关着时置灰，存的值不动。
-        CandidateTranslationPolicy.Scope scope =
-            CandidateTranslationPolicy.Scope.from(preferences.opt(CandidateTranslationPolicy.Scope.KEY));
-        InputFeatureToggle gloss = InputFeatureToggle.CANDIDATE_ENGLISH_GLOSS;
-        boolean glossOn = preferences.optBoolean(gloss.key(), gloss.enabledByDefault());
-        String targetLanguage = InputViewValuePolicy.textOr(preferences, "translation_target_language", "en");
-        translation.toggle("离线英文释义", null,
-            glossOn, checked -> savePreferences(values -> values.put(gloss.key(), checked),
-                () -> { if (checked) ensureGlosses(targetLanguage, state); })).help("给候选词标注离线释义；英语释义随应用自带，其他目标语言要下载离线释义词典");
-        InputFeatureToggle pronunciation = InputFeatureToggle.CANDIDATE_PRONUNCIATION;
-        boolean pronunciationOn = preferences.optBoolean(pronunciation.key(), pronunciation.enabledByDefault());
-        java.io.File phonetics = new java.io.File(requireContext().getFilesDir(),
-            "bootstrap/pronunciations/en-phonetic.db");
-        boolean phoneticsReady = phonetics.isFile() || state.packs().contains(ResourcePacks.PRONUNCIATIONS);
-        // 法、日、西、俄、德、韩语释义的读音在另一个词典里，目标语言是它们之一时才要它。
-        boolean targetReadings = app.msime.android.CandidatePronunciationPolicy.LANGUAGES.contains(targetLanguage)
-            && !"en".equals(targetLanguage);
-        boolean targetReadingsReady = state.packs().contains(ResourcePacks.TARGET_PRONUNCIATIONS);
-        // 词典没装好是当前状态，留在副标题；功能本身的说明收进「?」。
-        String pronunciationMissing = phoneticsReady && (!targetReadings || targetReadingsReady)
-            ? null : "离线读音词典未安装；打开后点下方「下载」，安装完成再进入输入框";
-        translation.toggle(pronunciation.title(), pronunciationMissing, pronunciationOn,
-            checked -> savePreferences(values -> values.put(pronunciation.key(), checked)))
-            .help(pronunciation.description());
-        if (pronunciationOn && !phoneticsReady)
-            packRow(translation, state, "离线英文音标词典", "仅供本机候选显示英文音标",
-                ResourcePacks.PRONUNCIATIONS);
-        if (pronunciationOn && targetReadings && !targetReadingsReady)
-            packRow(translation, state, "离线外语读音词典", "仅供本机候选显示法、日、西、俄、德、韩语释义的读音",
-                ResourcePacks.TARGET_PRONUNCIATIONS);
-        translation.nav("翻译目标语言", null, labelOf(List.of(TARGET_LANGUAGES), targetLanguage),
-            () -> pickTargetLanguage(targetLanguage, glossOn, state));
-        if (glossOn && needsGlosses(targetLanguage, state)) {
-            packRow(translation, state, "离线释义词典", "日、韩、法、德、西、俄语的离线释义", ResourcePacks.OFFLINE_GLOSSES);
-        }
     }
 
     // ---- 按需资源包 ----
@@ -482,19 +436,6 @@ public final class TypingPage extends ReloadingDetailPage {
         }
         sheet.destructive("移除" + language.title, () -> removeLanguage(language));
         sheet.show();
-    }
-
-    /** 离线释义词典只给英语以外的目标语言用：英语释义读随包的英文词库；安装包自带这门语言的离线释义时也不用下载。 */
-    private static boolean needsGlosses(String targetLanguage, State state) {
-        return !"en".equals(targetLanguage) && !state.packs().contains(ResourcePacks.OFFLINE_GLOSSES)
-            && !state.bundledGlosses().contains(targetLanguage);
-    }
-
-    /** 打开离线释义、或在打开时换成英语以外的目标语言：离线释义词典还没装就下载。 */
-    private void ensureGlosses(String targetLanguage, State state) {
-        if (!isAdded() || !needsGlosses(targetLanguage, state)) return;
-        ResourcePackService.request(requireContext(), ResourcePacks.OFFLINE_GLOSSES,
-            packSize(state, ResourcePacks.OFFLINE_GLOSSES));
     }
 
     // ---- 语言与方案 ----
@@ -636,111 +577,6 @@ public final class TypingPage extends ReloadingDetailPage {
     }
 
     /** 服务配置写入共享偏好，所有校验由 Rust 执行；每个输入框确认后原子保存。 */
-    private void cloudProviderSettings(LinearLayout target, JSONObject preferences) {
-        JSONObject provider = preferences.optJSONObject("cloud_candidate_provider");
-        if (provider == null) return;
-        GroupCard group = GroupCard.add(sectionColumn(target, "中文"), "云候选服务")
-            .withDividers(Ui.ROW_PADDING_H);
-        String source = provider.optString("source", "google");
-        group.nav("来源", null, cloudSourceLabel(source), () -> {
-            OptionSheet sheet = new OptionSheet(requireContext(), "云候选来源", null);
-            sheet.option("Google 输入工具", "google".equals(source),
-                () -> savePreferences(values -> KeyboardSheets.child(values, "cloud_candidate_provider").put("source", "google")));
-            sheet.option("自定义 HTTP 接口", "custom".equals(source), () -> {
-                if (provider.optString("endpoint").isEmpty()) editCloudField(provider, "endpoint", "接口地址", true);
-                else savePreferences(values -> KeyboardSheets.child(values, "cloud_candidate_provider").put("source", "custom"));
-            });
-            sheet.show();
-        });
-        if (!"custom".equals(source)) {
-            group.nav("自定义接口设置", null, editingCloudCustom ? "收起" : null, () -> {
-                editingCloudCustom = !editingCloudCustom;
-                if (lastState != null) render(lastState);
-            });
-        }
-        if ("custom".equals(source) || editingCloudCustom) {
-            group.nav("接口地址", null, cloudEndpointLabel(provider),
-                () -> editCloudField(provider, "endpoint", "接口地址", false));
-            group.nav("请求方法", null, provider.optString("method", "GET"), () -> {
-                OptionSheet sheet = new OptionSheet(requireContext(), "请求方法", null);
-                for (String method : List.of("GET", "POST")) sheet.option(method, method.equals(provider.optString("method")),
-                    () -> savePreferences(values -> KeyboardSheets.child(values, "cloud_candidate_provider").put("method", method)));
-                sheet.show();
-            });
-            group.nav("请求头", null, cloudConfiguredLabel(provider.optString("headers_json")),
-                () -> editCloudField(provider, "headers_json", "请求头（JSON）", false));
-            if ("POST".equals(provider.optString("method"))) {
-                group.nav("请求体模板", null, cloudConfiguredLabel(provider.optString("body_template")),
-                    () -> editCloudField(provider, "body_template", "请求体模板（JSON）", false));
-            }
-            group.nav("响应格式", null, cloudResponseFormatLabel(provider.optString("response_format")), () -> {
-                OptionSheet sheet = new OptionSheet(requireContext(), "响应格式", null);
-                String[][] formats = {{"candidates", "标准候选数组"}, {"google", "Google 格式"}, {"json_path", "JSON 路径"}};
-                for (String[] format : formats) sheet.option(format[1], format[0].equals(provider.optString("response_format")),
-                    () -> savePreferences(values -> KeyboardSheets.child(values, "cloud_candidate_provider").put("response_format", format[0])));
-                sheet.show();
-            });
-            if ("json_path".equals(provider.optString("response_format"))) {
-                group.nav("JSON 路径", null, provider.optString("response_path", "data.0"),
-                    () -> editCloudField(provider, "response_path", "JSON 路径", false));
-            }
-        }
-        group.nav("超时", null, provider.optInt("timeout_ms", 2000) + " 毫秒",
-            () -> editCloudField(provider, "timeout_ms", "超时（毫秒）", false));
-        group.toggle("缓存云候选", null, provider.optBoolean("cache_enabled"),
-            enabled -> savePreferences(values -> KeyboardSheets.child(values, "cloud_candidate_provider").put("cache_enabled", enabled))).help("仅保存在本机内存，无结果缓存 60 秒");
-        group.help("当前拼写发送至 " + cloudRecipient(provider) + "；不发送已上屏内容、词库或历史。");
-    }
-
-    private void editCloudField(JSONObject provider, String key, String title, boolean selectCustom) {
-        InputDialog dialog = new InputDialog(requireContext(), title, cloudFieldHelp(key));
-        dialog.addField(title, "timeout_ms".equals(key) ? String.valueOf(provider.optInt(key)) : provider.optString(key),
-            "timeout_ms".equals(key) ? android.text.InputType.TYPE_CLASS_NUMBER : 0);
-        dialog.setValidator(values -> !"timeout_ms".equals(key) || values.get(0).matches("[0-9]{1,5}"));
-        dialog.setPrimary("保存", values -> savePreferences(preferences -> {
-            JSONObject config = KeyboardSheets.child(preferences, "cloud_candidate_provider");
-            config.put(key, "timeout_ms".equals(key) ? Integer.valueOf(values.get(0)) : values.get(0));
-            if (selectCustom) config.put("source", "custom");
-        }));
-        dialog.show();
-    }
-
-    private static String cloudSourceLabel(String source) {
-        return "custom".equals(source) ? "自定义接口" : "Google";
-    }
-
-    private static String cloudRecipient(JSONObject provider) {
-        return "custom".equals(provider.optString("source")) ? cloudEndpointLabel(provider) : "inputtools.google.com";
-    }
-
-    private static String cloudEndpointLabel(JSONObject provider) {
-        String host = Uri.parse(provider.optString("endpoint").replace("{query}", "query")).getHost();
-        return host == null ? "未设置" : host;
-    }
-
-    private static String cloudConfiguredLabel(String value) {
-        return value == null || value.isBlank() || "{}".equals(value) ? "未设置" : "已设置";
-    }
-
-    private static String cloudResponseFormatLabel(String format) {
-        return switch (format) {
-            case "google" -> "Google 格式";
-            case "json_path" -> "JSON 路径";
-            default -> "标准数组";
-        };
-    }
-
-    private static String cloudFieldHelp(String key) {
-        return switch (key) {
-            case "endpoint" -> "支持 HTTPS 或本机 HTTP。GET 地址用 {query} 填入当前拼写。地址仅保存在本机。";
-            case "headers_json" -> "JSON 对象，例如 {\"Authorization\":\"Bearer …\"}。请求头可能含凭据，仅保存在本机。";
-            case "body_template" -> "POST 请求使用 JSON 对象；字符串值中的 {query} 自动替换为当前拼写。";
-            case "response_path" -> "点分对象键或数组下标，最终指向候选文本，例如 data.0 或 choices.0.message.content。";
-            case "timeout_ms" -> "等待云候选的最长时间，可填写 100–10000 毫秒。";
-            default -> "仅保存在本机";
-        };
-    }
-
     /** 把这门语言的方案移出 `enabled`；键盘正用着它时先切回剩下的第一个方案。 */
     private void removeLanguage(Language language) {
         AppEdition edition = AppEdition.current();
@@ -949,26 +785,6 @@ public final class TypingPage extends ReloadingDetailPage {
                 .help(mode.help())
                 .setEnabled(HelpcodeModesPolicy.enabled(mode, direct, midSentence, directHelpcode));
         }
-    }
-
-    private void pickTranslationScope(CandidateTranslationPolicy.Scope selected) {
-        OptionSheet sheet = new OptionSheet(requireContext(), CandidateTranslationPolicy.Scope.TITLE,
-            CandidateTranslationPolicy.Scope.DESCRIPTION);
-        for (CandidateTranslationPolicy.Scope scope : CandidateTranslationPolicy.Scope.values()) {
-            sheet.option(scope.title(), scope == selected,
-                () -> savePreferences(values -> values.put(CandidateTranslationPolicy.Scope.KEY, scope.id())));
-        }
-        sheet.show();
-    }
-
-    private void pickTargetLanguage(String selected, boolean glossOn, State state) {
-        OptionSheet sheet = new OptionSheet(requireContext(), "翻译目标语言", null);
-        for (String[] entry : TARGET_LANGUAGES) {
-            String id = entry[0];
-            sheet.option(entry[1], id.equals(selected), () -> savePreferences(values -> values.put("translation_target_language", id),
-                () -> { if (glossOn) ensureGlosses(id, state); }));
-        }
-        sheet.show();
     }
 
     private static String labelOf(List<String[]> entries, String id) {
