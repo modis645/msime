@@ -231,9 +231,8 @@ public final class KeyboardFragment extends HomeTabFragment {
         row(typing, PageId.EXPRESSION, R.drawable.ic_ms_translate);
         row(typing, PageId.LEXICON, R.drawable.ic_ms_menu_book);
         row(typing, PageId.PHRASES, R.drawable.ic_ms_chat);
-        HomeNavGroup ai = HomeNavGroup.add(rows);
-        // AI 润色与回复整页删除，这一组只剩插件。
-        row(ai, PageId.PLUGINS, R.drawable.ic_ms_extension);
+        HomeNavGroup tools = HomeNavGroup.add(rows);
+        row(tools, PageId.PLUGINS, R.drawable.ic_ms_extension);
         HomeNavGroup other = HomeNavGroup.add(rows);
         row(other, PageId.VOICE, R.drawable.ic_ms_mic);
         row(other, PageId.HANDWRITING, R.drawable.ic_ms_edit);
