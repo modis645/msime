@@ -2586,9 +2586,34 @@ impl<E: InputEngine> Runtime<E> {
         }
     }
 
+    /// 把一次选词的读音照原路打回组字，落在当前光标处。14 键、18 键的读音是组码字母，要从 `grid_key` 进；
+    /// 分词键 `'` 和九键的数字本来就从 `character` 进。
+    fn retype_selection(&mut self, selection: &PhraseSelection) -> Result<(), RuntimeError> {
+        for byte in selection.reading.bytes() {
+            if matches!(
+                selection.grid,
+                Some(
+                    KeyGrid::FourteenKey
+                        | KeyGrid::EighteenKey
+                        | KeyGrid::FourteenKeyShuangpin(_)
+                        | KeyGrid::EighteenKeyShuangpin(_)
+                )
+            ) && byte != b'\''
+            {
+                self.engine.grid_key(byte)?;
+            } else {
+                self.engine.character(byte, byte.is_ascii_uppercase())?;
+            }
+        }
+        Ok(())
+    }
+
     /// 回退暂存词段：普通退格在拼写末尾剩零或一个字符时恢复最近一次选词；
     /// `backspace_reverts_selection` 关闭时直接交给引擎删除拼写，删空后由现有收尾逻辑上屏已选文字。
     /// 分段退格在光标前没有拼写时丢掉最近词段，不恢复读音，不受此开关影响。
+    /// 触屏宿主（`backspace_retreat_any_reading`）另有两处不同：读音还剩多个字母、或光标停在读音开头
+    /// （光标前就是已选词）时，把最近一次选词的读音插回组字开头，**后面的拼写一个也不删**——
+    /// 用户打了一长串、先选了前面几个字、发现选错，把光标移到已选词边界按退格，就能只改这一段。
     /// 只有启用 `phrase_preedit`、宿主能显示暂存词段时才处理；其他动作照常交给引擎。
     fn retreat_phrase_selection(
         &mut self,
@@ -2599,22 +2624,28 @@ impl<E: InputEngine> Runtime<E> {
         }
         let reading = self.cached.editing_text.as_str();
         let caret = self.cached.caret_position;
-        let restore = match action {
+        // `restore` 为假时只丢词段（分段退格）；`front` 为真时把读音插回组字开头而不是整段重打。
+        let (restore, front) = match action {
             Action::Command(Command::Backspace) => {
-                // 触屏宿主要求退格随时能收回最近一次选词；桌面宿主仍要先把读音退到一两个字符。
-                if !self.backspace_reverts_selection
-                    || (!self.backspace_retreat_any_reading && reading.chars().count() > 1)
-                    || caret != reading.len()
-                {
+                if !self.backspace_reverts_selection {
                     return Ok(None);
                 }
-                true
+                let at_end = caret == reading.len();
+                let at_start = self.backspace_retreat_any_reading && caret == 0;
+                if !at_end && !at_start {
+                    return Ok(None);
+                }
+                // 触屏宿主：读音还剩多个字母（末尾还留着拼写），或光标停在读音开头（前面就是刚选的词），
+                // 都把这次选词的读音插回开头，后面的拼写保持不动。读音已退到零或一个字母时仍走整段重打，
+                // 与桌面宿主原来的口径一致。
+                let long = reading.chars().count() > 1;
+                (true, self.backspace_retreat_any_reading && (long || at_start))
             }
             Action::SegmentBackspace => {
                 if caret != 0 {
                     return Ok(None);
                 }
-                false
+                (false, false)
             }
             _ => return Ok(None),
         };
@@ -2636,29 +2667,21 @@ impl<E: InputEngine> Runtime<E> {
             self.refresh()?;
             return Ok(Some(self.transition(empty_result(true))));
         }
+        if front {
+            // 触屏：把读音插回组字开头，光标停在这串字母之后，后面的拼写原样留着（r22）。
+            // 不调 `Cancel`：那样会把还没选的拼写一起丢掉（原来的整段重打只在小尾巴时才看不出问题）。
+            self.engine.command(Command::MoveHome)?;
+            self.retype_selection(&selection)?;
+            self.refresh()?;
+            return Ok(Some(self.transition(empty_result(true))));
+        }
         // Put the reading back. The reference hands its Engine the spelling directly
         // (`set_pinyin_sequence` then `recompute_candidates`); this Engine is only reachable
         // through the keys that built the composition, so the composition is thrown away and the
         // spelling typed again. The user sees the same thing either way: the pinyin that selection
         // consumed, with its candidates, and the caret at its end.
         self.engine.command(Command::Cancel)?;
-        for byte in selection.reading.bytes() {
-            // 字母归组键盘的组码只认 `grid_key`；分词键 `'` 和九键的数字本来就从 `character` 进。
-            if matches!(
-                selection.grid,
-                Some(
-                    KeyGrid::FourteenKey
-                        | KeyGrid::EighteenKey
-                        | KeyGrid::FourteenKeyShuangpin(_)
-                        | KeyGrid::EighteenKeyShuangpin(_)
-                )
-            ) && byte != b'\''
-            {
-                self.engine.grid_key(byte)?;
-            } else {
-                self.engine.character(byte, byte.is_ascii_uppercase())?;
-            }
-        }
+        self.retype_selection(&selection)?;
         self.refresh()?;
         Ok(Some(self.transition(empty_result(true))))
     }
