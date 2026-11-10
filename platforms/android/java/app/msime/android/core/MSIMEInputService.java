@@ -4147,9 +4147,13 @@ public final class MSIMEInputService extends InputMethodService {
                 : ""
             : editingText;
         // 笔画的 editing_text 是字母 hspnzx，reading 才是用户按下的笔画字形（一丨丿丶乛＊），所以同样标记 reading。日语的 editing_text 是罗马字（九键的 ち 送的是 chi），reading 才是假名。哪些方案这样做由引擎的 `draws_reading` 决定。
+        // 拼音显示位置选「候选栏」时，已经选中的那一段也只画在读音行上，不写进输入框：
+        // 用户选的字在确认整句之前不进文档，与讯飞等输入法一致（框里留空，读音行画「已选 + 在拼」）。
+        // 结束组字区那条路（drawn 为假）仍带上它，否则失焦时这一段的字会丢。
+        String prefixInBox = spelling ? "" : phrasePrefix;
         String composing = KoreanInputPolicy.composing(
             InputSchemeTraits.drawsReading(nextViewScheme) && !nextDedicatedEnglish,
-            phrasePrefix, typed,
+            prefixInBox, typed,
             drawn ? InputViewValuePolicy.textOr(next, "display_reading", reading) : reading);
         // 九键的 editing_text 是按下的数字键（64426），不能写进输入框：写的是引擎给的拼音读音 `nine_key_reading`（ni'hao），即候选栏原来画的那段读音。光标移走、不经引擎结束组字区时（drawn 为假）不留下任何文字，与组字不进输入框时相同。注音 9 键例外：上面已经按大千的规则标记 reading（转换结果加未完成的数字），照常留在输入框里。14 键的 editing_text 是组码字母（bugao），不写进输入框，读音画在候选栏上；英文和本地模式画的是 26 键，照常标记。
         boolean letterKeyGrid = !nextDedicatedEnglish && KeyboardLayout.drawsLetterGrid(touchLayout(next));
