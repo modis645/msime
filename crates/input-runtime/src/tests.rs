@@ -3416,6 +3416,32 @@ fn touch_host_backspace_retreats_while_the_spelling_still_has_letters() {
 }
 
 #[test]
+fn touch_host_backspace_at_the_selection_boundary_restores_only_that_piece() {
+    // 打十个字母、先选了前面两个字、发现选错：光标移到已选词右边（读音开头）按退格，
+    // 这两个字要回到拼音重新选，后面的拼写一个也不许动。
+    let mut runtime = phrase_runtime("haitanpaobu", vec![6]);
+    runtime.engine.words = vec!["海滩".into()];
+    runtime.refresh().unwrap();
+    runtime.set_backspace_retreat_any_reading(true);
+    let id = runtime.view().candidates[0].id;
+    runtime.dispatch(Action::Select(id)).unwrap();
+    assert_eq!(runtime.view().phrase_prefix, "海滩");
+    assert_eq!(runtime.view().editing_text, "paobu");
+
+    let home = runtime
+        .dispatch(Action::Command(Command::MoveHome))
+        .unwrap();
+    assert_eq!(home.view.caret_position, 0);
+    let restored = runtime
+        .dispatch(Action::Command(Command::Backspace))
+        .unwrap();
+    assert_eq!(restored.commit, None);
+    assert!(restored.view.phrase_prefix.is_empty());
+    assert_eq!(restored.view.editing_text, "haitanpaobu");
+    assert_eq!(runtime.view().caret_position, 6);
+}
+
+#[test]
 fn disabling_selection_retreat_keeps_cancel_and_segment_delete_rules() {
     for cancel in [false, true] {
         let mut runtime = phrase_runtime("haitanpaobu", vec![6]);
