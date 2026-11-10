@@ -148,6 +148,8 @@ pub struct Runtime<E: InputEngine = Session> {
     pub(crate) phrase_preedit: bool,
     /// 普通退格在拼写末尾是否回退已选词段；分段删除不受此开关影响。
     pub(crate) backspace_reverts_selection: bool,
+    /// 普通退格是否不必先把读音退到一两个字符就先回退最近一次选词。触屏宿主（Android）开着：手机键盘没有分段删除键，退格就是用户唯一的「回到上一个词」的手势。桌面宿主的「退格删字母、退到只剩一个再收词」不变。
+    pub(crate) backspace_retreat_any_reading: bool,
     /// 造词时按 Esc 是否只丢掉还没选的拼写、保留已经选好的词（Windows `input.escape_keeps_selected_word`）。默认关：Esc 连已选词一起丢掉，与旧行为一致。
     pub(crate) escape_keeps_selected_word: bool,
     /// 左右方向键在光标已经停在输入串端点、编辑器动不了它时改成移动候选高亮（偏好 `navigation.left_right`）。和 `backspace_reverts_selection` 一样是宿主状态：判断在 runtime 里做，宿主只照常发光标命令。
@@ -907,6 +909,11 @@ impl<E: InputEngine> Runtime<E> {
         self.backspace_reverts_selection = enabled;
     }
 
+    /// 退格在读音还有多个字符时也先回退最近一次选词（触屏宿主的口径）。只影响下一次退格，不清空已选词段或历史，也不重建 Engine。
+    pub fn set_backspace_retreat_any_reading(&mut self, enabled: bool) {
+        self.backspace_retreat_any_reading = enabled;
+    }
+
     /// 造词时第一次 Esc 只丢掉还没选的拼写、保留已经选好的词，再按一次才整体取消。只影响下一次 Esc，不清空已选词段或历史，也不重建 Engine。
     pub fn set_escape_keeps_selected_word(&mut self, enabled: bool) {
         self.escape_keeps_selected_word = enabled;
@@ -1239,6 +1246,7 @@ impl<E: InputEngine> Runtime<E> {
             second_third_candidate: Default::default(),
             phrase_preedit: false,
             backspace_reverts_selection: true,
+            backspace_retreat_any_reading: false,
             escape_keeps_selected_word: false,
             left_right_navigation: false,
             english_first_page_count: 1,
@@ -2593,8 +2601,9 @@ impl<E: InputEngine> Runtime<E> {
         let caret = self.cached.caret_position;
         let restore = match action {
             Action::Command(Command::Backspace) => {
+                // 触屏宿主要求退格随时能收回最近一次选词；桌面宿主仍要先把读音退到一两个字符。
                 if !self.backspace_reverts_selection
-                    || reading.chars().count() > 1
+                    || (!self.backspace_retreat_any_reading && reading.chars().count() > 1)
                     || caret != reading.len()
                 {
                     return Ok(None);
