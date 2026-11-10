@@ -57,7 +57,7 @@ import org.json.JSONObject;
  */
 public final class VoicePage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
-        return java.util.List.of("识别", "服务", "润色", "隐私");
+        return java.util.List.of("识别", "服务", "隐私");
     }
 
     private static final String[] TRIGGER_LABELS = {"工具栏/长按空格", "无"};
@@ -238,8 +238,6 @@ public final class VoicePage extends ReloadingDetailPage {
             value -> KeyboardSheets.saveLocal(this, AndroidLocalSettings.VOICE_VAD_SENSITIVITY,
                 value, this::reload, this::reload)).help("数值越高越容易判定说完、结束录音；调得太高，轻声说的字可能被当成停顿");
         recognition.help("停顿时间仅用于键盘内的本地识别；灵敏度仅用于点按开始、带语音活动检测的本地整段模型，按住空格时不变。系统识别自行判停，云服务仍由「说完了」或松开空格结束。这两项只保存在本机，下次本地识别生效。");
-
-        polishGroup(target, voice, state);
 
         GroupCard privacy = GroupCard.add(sectionColumn(target, "隐私"), "隐私");
         boolean contribute = local.bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO);
@@ -606,46 +604,6 @@ public final class VoicePage extends ReloadingDetailPage {
     private static boolean hasToken(String direct, @Nullable JSONObject slots, String provider) {
         return !direct.isEmpty() || (slots != null
             && !TextPolicy.trimUnicodeWhitespace(slots.optString(provider, "")).isEmpty());
-    }
-
-    /** 「润色」组：开关，打开后是服务、密钥、模型、接口、方案和「测试」。键盘读的同样是这些 `polish_*` 字段。 */
-    private void polishGroup(LinearLayout target, JSONObject voice, State state) {
-        GroupCard polish = GroupCard.add(sectionColumn(target, "润色"), "润色");
-        boolean enabled = VoicePolishPolicy.requested(voice.optBoolean("polish_enabled", false),
-            voice.optBoolean("polish_text", false));
-        String provider = InputViewValuePolicy.textOr(voice, "polish_provider", "");
-        String box = TextPolicy.trimUnicodeWhitespace(InputViewValuePolicy.textOr(voice, "polish_token", ""));
-        JSONObject slots = voice.optJSONObject("polish_tokens");
-        boolean hasToken = hasToken(box, slots, provider);
-        String status = VoicePolishSettingsPolicy.status(enabled, state.polishConfigured(), hasToken);
-        // 两个开关在共享设置页一起写，任一个开着键盘就会润色，所以关的时候两个都关。
-        polish.toggle("润色识别结果", status, enabled, checked -> savePreferences(
-            preferences -> {
-                JSONObject next = KeyboardSheets.child(preferences, "voice_input");
-                next.put("polish_text", checked);
-                next.put("polish_enabled", checked);
-            })).help("识别后交给大模型整理文字再上屏");
-        if (!enabled) return;
-        polish.nav("润色服务", state.catalog().available() ? null : "服务目录暂不可用，请稍后返回重试。",
-            state.catalog().polishLabel(provider), () -> pickPolishProvider(provider, state.catalog()))
-            .setEnabled(state.catalog().available());
-        polish.nav("润色 API Key", null, hasToken ? "已设置" : "未设置", () -> editToken("polish", provider, "API Key"));
-        String model = InputViewValuePolicy.textOr(voice, "polish_model", "").trim();
-        polish.nav("润色模型", null, model.isEmpty() ? "默认" : HomeTextPolicy.shortLabel(model), () -> editText("润色模型",
-            "留空使用该服务的默认模型", model, value -> saveVoice("polish_model", value)));
-        String endpoint = InputViewValuePolicy.textOr(voice, "polish_endpoint", "").trim();
-        polish.nav("润色接口地址", VoiceProviderPolicy.endpointProblem(provider, endpoint),
-            endpoint.isEmpty() ? "默认" : HomeTextPolicy.shortLabel(endpoint), () -> editEndpoint("polish", provider, endpoint));
-        String prompt = InputViewValuePolicy.textOr(voice, "polish_prompt_id", "");
-        polish.nav("润色方案", null, VoicePolishSettingsPolicy.promptLabel(prompt), () -> pickPrompt(prompt));
-        String field = VoicePolishSettingsPolicy.customField(prompt);
-        if (field != null) {
-            String custom = InputViewValuePolicy.textOr(voice, field, "");
-            polish.nav("方案内容", null, custom.trim().isEmpty() ? "未填写" : HomeTextPolicy.shortLabel(custom.trim()),
-                () -> editCustomPrompt(field, custom));
-        }
-        testRow(polish, "voice.polish");
-        polish.help("识别出的文字会发给所选服务整理后再上屏。API Key 只保存在本机，不随设置同步。");
     }
 
     private void pickPolishProvider(String selected, VoiceProviderCatalog catalog) {
