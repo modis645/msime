@@ -52,7 +52,7 @@ public enum InputFeatureToggle {
     JAPANESE_TOGGLE_INPUT(Group.JAPANESE, "touch_japanese_toggle_input", true, "日语九键连点切换",
         "仅日语九键：连点同一键依次切换假名；关闭后每次轻点都输入键面假名，如「ささ」，其他假名用四向滑动选择"),
 
-    CLIPBOARD_HISTORY(Group.PRIVACY, "clipboard_history", false, "剪贴板历史",
+    CLIPBOARD_HISTORY(Group.PRIVACY, "clipboard_history", true, "剪贴板历史",
         "在键盘里保留最近复制的内容，仅存本机；关闭会立即清空"),
     CANDIDATE_TRANSLATIONS(Group.PRIVACY, "candidate_translations", false, "候选翻译",
         "为候选词附上译文；联网翻译用哪个服务在「设置 → 输入 → 翻译服务」里选"),
