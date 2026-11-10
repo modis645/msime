@@ -5325,8 +5325,13 @@ public final class MSIMEInputService extends InputMethodService {
         if (!inlineCaretTap) return false;
         android.text.Layout layout = view.getLayout();
         if (layout == null || layout.getLineCount() == 0 || layout.getEllipsisCount(0) > 0) return false;
-        int target = CompositionCaretPolicy.tapTarget(tapPrefixLength, tapDisplay, tapEditing,
-            tapKeypad, tapCaretMark, view.getOffsetForPosition(x, view.getHeight() / 2f));
+        int tapped = view.getOffsetForPosition(x, view.getHeight() / 2f);
+        // 点在最后一个字之后：一率回到末尾。读数被截短、与按键对不上（辅助码）时也算，否则点了末尾却停在原地，
+        // 就没法接着往后打（r21）。
+        int target = CompositionCaretPolicy.tapPastEnd(tapPrefixLength, tapDisplay, tapped)
+            ? tapEditing.length()
+            : CompositionCaretPolicy.tapTarget(tapPrefixLength, tapDisplay, tapEditing,
+                tapKeypad, tapCaretMark, tapped);
         if (target < 0) return false;
         // 拖动时同一格反复报到：位置没变就不再重写组字。
         if (target == tapLastTarget) return true;
@@ -12512,8 +12517,11 @@ public final class MSIMEInputService extends InputMethodService {
                 // 网格辅助码只画在读音行上，不进输入框的组字区。
                 nineKeyPreedit = GridHelpcodePolicy.reading(nineKeyPreedit, gridHelpcodeDisplay());
             }
+            // 全拼的 reading 是空的（引擎只让日语、注音这类方案画读音），读音行本该画引擎分好音节的 preedit
+            // （nihao 是 ni'hao）；辅助码、本地模式这些与按键对不上的写法照旧画按键（PreeditSpellingPolicy）。
+            String segmented = view == null ? "" : InputViewValuePolicy.textOr(view, "preedit", "");
             String spelling = !nineKeyPreedit.isEmpty() ? nineKeyPreedit
-                : reading.isEmpty() ? editingText : reading;
+                : PreeditSpellingPolicy.spelling(reading, segmented, editingText);
             String localModeTitle = "none".equals(localModeKey) ? spelling : editingText;
             // 本地模式自己的名字说明正在哪个模式里，不是拼写，所以照常画；模式在触发键之后拼写的内容和其他拼写一样，写进输入框后就不画。
             boolean localModeName = false;
