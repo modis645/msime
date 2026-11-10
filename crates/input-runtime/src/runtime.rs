@@ -2653,7 +2653,8 @@ impl<E: InputEngine> Runtime<E> {
             .phrase_selections
             .pop()
             .expect("the stack was checked above");
-        self.phrase_prefix = selection.word_before;
+        // 读音要照原路打回，`word_before` 只能克隆：直接搬走会让后面的 `retype_selection` 借不到 `selection`。
+        self.phrase_prefix = selection.word_before.clone();
         self.bump_composition_epoch();
         self.facts.retracted = Some(if restore {
             SelectionRetraction::Restore
