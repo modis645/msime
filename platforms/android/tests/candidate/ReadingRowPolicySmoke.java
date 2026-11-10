@@ -25,10 +25,10 @@ public final class ReadingRowPolicySmoke {
         // #6107：读音字号按「预编辑字号」相对共享默认值缩放。没改过设置（共享默认 15）的用户读音仍是设计的 12sp，调大调小都跟着变。
         check(ReadingRowPolicy.textSizeSp(ReadingRowPolicy.DEFAULT_PREEDIT_FONT_SIZE) == ReadingRowPolicy.DESIGN_TEXT_SP,
             "the shared default keeps the design reading");
-        check(ReadingRowPolicy.DESIGN_TEXT_SP == 16f, "the design reading size is 16sp");
-        check(Math.abs(ReadingRowPolicy.textSizeSp(12) - 12.8f) < 1e-3f, "the smallest setting shrinks the reading");
-        check(Math.abs(ReadingRowPolicy.textSizeSp(20) - 21.3333f) < 1e-3f, "a larger setting grows the reading");
-        check(Math.abs(ReadingRowPolicy.textSizeSp(32) - 34.1333f) < 1e-3f, "the largest setting grows the reading");
+        check(ReadingRowPolicy.DESIGN_TEXT_SP == 24f, "the design reading size is 24sp");
+        check(Math.abs(ReadingRowPolicy.textSizeSp(12) - 19.2f) < 1e-3f, "the smallest setting shrinks the reading");
+        check(Math.abs(ReadingRowPolicy.textSizeSp(20) - 32f) < 1e-3f, "a larger setting grows the reading");
+        check(Math.abs(ReadingRowPolicy.textSizeSp(32) - 51.2f) < 1e-3f, "the largest setting grows the reading");
         check(ReadingRowPolicy.textSizeSp(16) > ReadingRowPolicy.textSizeSp(15), "every step changes the size");
         // 共享默认值改了，这里的换算基准也得跟着改，否则没改过设置的用户读音会悄悄变大或变小。
         String preferences = Files.readString(repoRoot().resolve(PREFERENCES_SOURCE));
