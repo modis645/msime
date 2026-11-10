@@ -2283,6 +2283,9 @@ struct HostOptions {
     /// the field would otherwise show nothing for it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     phrase_preedit: Option<bool>,
+    /// 触屏宿主的退格口径：读音还剩多个字符时，退格也先回退最近一次选词（`phrase_selections` 栈）。缺省关，桌面宿主照旧「退格删字母、退到一两个字符才收词」。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    backspace_retreat_any_reading: Option<bool>,
     /// `false`：这个会话不记选词位置和上屏效率。给与另一个会话处理同一次选词的镜像会话用：Windows TIP 在应用进程里的宿主会话跟着 Server 选同一个词，两边都记就会算两遍，由 Server 的会话记。缺省照常记。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     selection_statistics: Option<bool>,
@@ -3331,6 +3334,7 @@ fn prepared_host_options(
                 .to_owned(),
         ),
         phrase_preedit: None,
+        backspace_retreat_any_reading: None,
         selection_statistics: None,
         keyboard_reranker: None,
         rerank_models: None,
