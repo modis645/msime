@@ -24,7 +24,7 @@ import java.util.Map;
 import org.json.JSONObject;
 
 /**
- * 隐私：联网功能（用水杉账号翻译候选、匿名使用统计，以及去「翻译服务」的入口）、本机数据（剪贴板历史）、防止截屏、隐私模式说明和隐私政策链接。
+ * 隐私：联网功能（匿名使用统计）、本机数据（剪贴板历史）、防止截屏、隐私模式说明和隐私政策链接。
  *
  * <p>三个开关就是 {@link InputFeatureToggle} 里的那三项，标题和说明也取那里，本页是它们在宿主里唯一的位置（实施计划 §2.9）。隐私模式的语义在 Rust 与键盘里（P17）：这里只说明它做什么、不做什么。
  *
@@ -40,7 +40,7 @@ public final class PrivacyPage extends ReloadingDetailPage {
     private static final String POLICY = "https://msime.app/privacy/";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final InputFeatureToggle[] NETWORK = {
-        InputFeatureToggle.CANDIDATE_TRANSLATION_ACCOUNT, InputFeatureToggle.USAGE_REPORTING,
+        InputFeatureToggle.USAGE_REPORTING,
     };
     private static final InputFeatureToggle[] LOCAL = {InputFeatureToggle.CLIPBOARD_HISTORY};
 
@@ -84,7 +84,7 @@ public final class PrivacyPage extends ReloadingDetailPage {
 
         GroupCard incognito = GroupCard.add(sectionColumn(target, "无痕"), "隐私模式");
         incognito.note("在键盘功能面板里打开隐私模式后，" + app
-            + "不学习新词、不调整候选顺序，不记录字数、按键和输入统计，不保存剪贴板历史和云剪贴板，也不做任何数据贡献。云候选、翻译、AI 润色这类你单独打开的联网功能按各自的开关照常工作，不受隐私模式影响。");
+            + "不学习新词、不调整候选顺序，不记录字数、按键和输入统计，不保存剪贴板历史和云剪贴板，也不做任何数据贡献。你单独打开的联网功能按各自的开关照常工作，不受隐私模式影响。");
 
         GroupCard links = GroupCard.add(sectionColumn(target, "无痕"), null);
         links.nav("隐私政策", null, null, this::openPolicy).help("msime.app");
