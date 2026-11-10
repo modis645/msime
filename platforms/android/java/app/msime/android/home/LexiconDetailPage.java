@@ -178,8 +178,10 @@ public final class LexiconDetailPage extends ReloadingDetailPage {
                     : "还没有自己添加或学到的词。输入拼音可以搜索内置词条。");
             }
             for (DictionaryCollectionsStore.Word word : shown) {
-                card.value(word.value(), cantonese() ? word.key() : DictionaryCollectionsStore.displayCode(word.key()),
+                GroupCard.Row row = card.value(word.value(),
+                    cantonese() ? word.key() : DictionaryCollectionsStore.displayCode(word.key()),
                     String.format(Locale.ROOT, "%d", word.weight()));
+                bindRemoveOnLongPress(row, word);
             }
         } else {
             DictionaryCollectionsStore.Collection collection = current.collection();
@@ -192,6 +194,31 @@ public final class LexiconDetailPage extends ReloadingDetailPage {
             }
         }
         card.addView(accentRow("+", "添加词条", this::showAddDialog));
+    }
+
+    /**
+     * 词条行加长按删除。内置词库页在查询为空时只列用户自己加或学到的词（{@link DictionaryCollectionsStore#words} 的空查询只列自己词），
+     * 删除走个人词库编辑队列；搜索出来的内置词条没有个人词库记录，删不掉时给出提示而不是静默改库。
+     */
+    private void bindRemoveOnLongPress(GroupCard.Row row, DictionaryCollectionsStore.Word word) {
+        View view = row.view();
+        view.setOnLongClickListener(ignored -> {
+            MessageDialog.confirm(requireContext(), "删除词条？",
+                "「" + word.value() + "」会从本机词库删除，以后打这个拼音不再出现。", "删除", () -> remove(word));
+            return true;
+        });
+    }
+
+    private void remove(DictionaryCollectionsStore.Word word) {
+        HostTask.run(this, context -> DictionaryCollectionsStore.removeWord(context, word), result -> {
+            if (result == null || !result.ok()) {
+                MsToast.show(requireContext(), "没能删除这个词条：内置词条不能删除，或这个词条已经不存在");
+                return;
+            }
+            MsToast.show(requireContext(), "已删除，键盘下次启动时生效");
+            shown.remove(word);
+            renderEntries();
+        });
     }
 
     private View accentRow(@Nullable String glyph, String title, Runnable action) {
