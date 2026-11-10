@@ -227,6 +227,41 @@ if [ "$distribution" = play ]; then
 else
   unsigned="$gradle_dir/app/build/outputs/apk/$edition/release/app-$edition-release-unsigned.apk"
   [[ -f "$unsigned" ]] || { echo "Expected host APK not produced" >&2; exit 1; }
+  # fork 自用：AGP 8 把 classes*.dex 以 stored（不压缩）方式打进包，18.9 MB 原样占位；真正需要 stored 的只有
+  # 要从包内 mmap 的 .so（jniLibs.useLegacyPackaging=false）。这里只把 dex 换成 deflate，其余条目照原样
+  # 搬运（压缩方式与顺序不变），APK 少 11 MB 左右，装后占用不变（dex 反正要被 ART 编译一份）。
+  # MSIME_ANDROID_COMPRESS_DEX=0 可关掉。
+  if [ "${MSIME_ANDROID_COMPRESS_DEX:-1}" = 1 ]; then
+    python3 - "$unsigned" <<'PY'
+import os, sys, zipfile
+
+path = sys.argv[1]
+temporary = path + ".dexdeflate"
+rewritten = 0
+with zipfile.ZipFile(path) as source, zipfile.ZipFile(temporary, "w") as target:
+    for item in source.infolist():
+        payload = source.read(item.filename)
+        method = zipfile.ZIP_DEFLATED if item.filename.endswith(".dex") else item.compress_type
+        if method != item.compress_type:
+            rewritten += 1
+        info = zipfile.ZipInfo(item.filename, item.date_time)
+        info.compress_type = method
+        info.external_attr = item.external_attr
+        info.internal_attr = item.internal_attr
+        info.create_system = item.create_system
+        target.writestr(info, payload)
+os.replace(temporary, path)
+print("dex 改为 deflate：%d 个条目" % rewritten)
+PY
+    python3 - "$unsigned" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as archive:
+    stored = [i.filename for i in archive.infolist()
+              if i.filename.endswith(".dex") and i.compress_type == zipfile.ZIP_STORED]
+if stored:
+    sys.exit("these dex entries are still stored: " + ", ".join(stored))
+PY
+  fi
   aligned="$repo_root/target/android/$apk_name-aligned.apk"
   "$tools_dir/zipalign" -f -P 16 4 "$unsigned" "$aligned"
   "$tools_dir/apksigner" sign "${android_signing[@]}" --out "$output" "$aligned"
