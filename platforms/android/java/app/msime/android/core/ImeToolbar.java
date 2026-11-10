@@ -11,6 +11,7 @@ import android.view.TouchDelegate;
 import android.view.inputmethod.InputConnection;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -238,6 +239,45 @@ final class ImeToolbar {
         s.preedit.setOnClickListener(ignored -> {
             s.imeKeyFeedback.playFeedback(s.preedit);
             s.imeCompositionEditor.open();
+        });
+        // 组字时可编辑的读音行就地移光标（r19）：按下就吃掉事件，抬起按横坐标定位，横向拖动时光标跟手；
+        // 省略号截短、读音对不上按键或不在组字时放行，仍按原来的点按打开放大拼写条。
+        s.preedit.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
+            private boolean dragged;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                if (!s.preeditInlineTap()) return false;
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN -> {
+                        downX = event.getX();
+                        dragged = false;
+                        v.getParent().requestDisallowInterceptTouchEvent(true);
+                        return true;
+                    }
+                    case MotionEvent.ACTION_MOVE -> {
+                        if (!dragged && Math.abs(event.getX() - downX) > s.pixels(6)) dragged = true;
+                        if (dragged) s.tapPreeditAt(s.preedit, event.getX());
+                        return true;
+                    }
+                    case MotionEvent.ACTION_UP -> {
+                        if (!dragged) {
+                            if (s.tapPreeditAt(s.preedit, event.getX())) {
+                                s.imeKeyFeedback.playFeedback(v);
+                            } else {
+                                s.imeCompositionEditor.open();
+                            }
+                        }
+                        return true;
+                    }
+                    case MotionEvent.ACTION_CANCEL -> {
+                        return true;
+                    }
+                    default -> {
+                        return false;
+                    }
+                }
+            }
         });
         ViewPolicy.setClickable(s.preedit, false);
         LinearLayout preeditFrame = LayoutPolicy.row(s);
