@@ -4150,7 +4150,9 @@ public final class MSIMEInputService extends InputMethodService {
         // 拼音显示位置选「候选栏」时，已经选中的那一段也只画在读音行上，不写进输入框：
         // 用户选的字在确认整句之前不进文档，与讯飞等输入法一致（框里留空，读音行画「已选 + 在拼」）。
         // 结束组字区那条路（drawn 为假）仍带上它，否则失焦时这一段的字会丢。
-        String prefixInBox = spelling ? "" : phrasePrefix;
+        // `spelling` 为真表示拼写写进输入框（那时前缀照旧跟着写）；为假表示拼写在候选栏上，
+        // 这一段已选汉字也就不进输入框，只由读音行画出来。
+        String prefixInBox = spelling ? phrasePrefix : "";
         String composing = KoreanInputPolicy.composing(
             InputSchemeTraits.drawsReading(nextViewScheme) && !nextDedicatedEnglish,
             prefixInBox, typed,
