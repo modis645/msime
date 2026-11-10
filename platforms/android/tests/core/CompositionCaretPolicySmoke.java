@@ -190,6 +190,13 @@ public final class CompositionCaretPolicySmoke {
         check(CompositionCaretPolicy.tapTarget(2, "xi'an", "9426", NINE, nineKeyMark, barIndex + 1) == 2, "a tap just after the bar keeps the caret");
         check(CompositionCaretPolicy.tapTarget(2, "xi'an", "9426", NINE, nineKeyMark, barIndex + 2) == 3, "a tap one letter past the bar moves one key");
 
+        // r21：点在最后一个字之后一律回末尾，读音被截短或对不上按键时也一样。
+        check(CompositionCaretPolicy.tapPastEnd(0, "ni'hao", 6), "a tap at the end of the reading");
+        check(CompositionCaretPolicy.tapPastEnd(2, "ni'hao", 8), "a tap past the end behind a chosen piece");
+        check(CompositionCaretPolicy.tapPastEnd(0, "", 0), "a tap on an empty reading is the end");
+        check(!CompositionCaretPolicy.tapPastEnd(0, "ni'hao", 5), "a tap on the last letter is not past it");
+        check(!CompositionCaretPolicy.tapPastEnd(2, "ni'hao", 7), "a tap on the last letter behind a chosen piece");
+
         // 发给引擎的命令：两头各一条，其余逐格。
         moves(19, 0, 19, CompositionCaretPolicy.MOVE_HOME, 1);
         moves(3, 19, 19, CompositionCaretPolicy.MOVE_END, 1);
