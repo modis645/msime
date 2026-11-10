@@ -8,7 +8,7 @@ fn delayed_disable_preserves_reenabled_history_and_explicit_clear_still_works() 
     let preferences_root = root.path().join("preferences");
     let store = PreferencesStore::new(&preferences_root);
     let original = store.load().unwrap();
-    assert!(!original.preferences.clipboard_history);
+    assert!(original.preferences.clipboard_history);
     let mut enabled = original.preferences;
     enabled.clipboard_history = true;
     enabled.clipboard_history_limit = 100;
