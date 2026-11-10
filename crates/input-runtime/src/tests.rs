@@ -3397,6 +3397,25 @@ fn backspace_selection_preference_changes_live_without_losing_history() {
 }
 
 #[test]
+fn touch_host_backspace_retreats_while_the_spelling_still_has_letters() {
+    let mut runtime = phrase_runtime("woshi", vec![2]);
+    runtime.engine.words = vec!["我".into()];
+    runtime.refresh().unwrap();
+    runtime.set_backspace_retreat_any_reading(true);
+    let id = runtime.view().candidates[0].id;
+    runtime.dispatch(Action::Select(id)).unwrap();
+    assert_eq!(runtime.view().phrase_prefix, "我");
+    assert_eq!(runtime.view().editing_text, "shi");
+
+    let restored = runtime
+        .dispatch(Action::Command(Command::Backspace))
+        .unwrap();
+    assert_eq!(restored.commit, None);
+    assert!(restored.view.phrase_prefix.is_empty());
+    assert_eq!(restored.view.editing_text, "woshi");
+}
+
+#[test]
 fn disabling_selection_retreat_keeps_cancel_and_segment_delete_rules() {
     for cancel in [false, true] {
         let mut runtime = phrase_runtime("haitanpaobu", vec![6]);
