@@ -202,10 +202,6 @@ final class ImeVoiceEntry {
         if (engine == Engine.LOCAL) {
             LocalAsrRecognizer.watchMemory(s);
             local = new LocalAsrRecognizer();
-            AndroidLocalSettings.Snapshot localPreferences = AndroidLocalSettings.load(s);
-            silenceStopMillis = localPreferences.integer(AndroidLocalSettings.VOICE_PAUSE_MILLIS);
-            // 判停灵敏度只给点按开始、停顿后自动结束的会话；按住空格由松手结束，传 0 让阈值保持 0.5，与鸿蒙和 iOS 一致。
-            local.vadSensitivity(startingHeld ? 0 : localPreferences.integer(AndroidLocalSettings.VOICE_VAD_SENSITIVITY));
             local.diagnostics(kind -> diagnostic(session, kind));
             local.retainAudio(contribute);
         } else if (engine == Engine.UPLOAD) {
@@ -221,7 +217,8 @@ final class ImeVoiceEntry {
         DoubaoRecognizer runningStream = streaming;
         HttpAsrRecognizer runningUpload = upload;
         VoicePolisher runningPolisher = polisher;
-        String options = HostOptionsPolicy.readRuntimeOptions(files);
+        // 判停灵敏度按开始那一刻的「按住空格」状态决定，工作线程读字段可能读到旧值，这里先定下来。
+        final boolean heldAtStart = startingHeld;
         try {
             worker.execute(() -> {
                 String text = null;
@@ -234,6 +231,13 @@ final class ImeVoiceEntry {
                         // 上面挑引擎时已经把 `files` 为 null 的情况算过了，这里直接解引用会让取不到
                         // files 目录的设备吃一个 NPE，再被下面的兜底改写成那句泛泛的提示；把 null 交给
                         // 识别器当「模型不可用」处理，用户看到的就是对得上的文案。
+                        // 偏好快照和运行时选项都在工作线程里读：按下语音键时主线程只负责把聆听面板画出来。
+                        AndroidLocalSettings.Snapshot localPreferences = AndroidLocalSettings.load(s);
+                        silenceStopMillis = localPreferences.integer(AndroidLocalSettings.VOICE_PAUSE_MILLIS);
+                        // 判停灵敏度只给点按开始、停顿后自动结束的会话；按住空格由松手结束，传 0 让阈值保持 0.5，与鸿蒙和 iOS 一致。
+                        runningLocal.vadSensitivity(
+                            heldAtStart ? 0 : localPreferences.integer(AndroidLocalSettings.VOICE_VAD_SENSITIVITY));
+                        String options = HostOptionsPolicy.readRuntimeOptions(files);
                         text = runningLocal.recognize(model, files == null ? null : files.toPath(),
                             language, options, null, null, new LocalAsrRecognizer.Listener() {
                                 @Override public void onPartial(String partial) {
