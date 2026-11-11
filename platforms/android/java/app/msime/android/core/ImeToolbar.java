@@ -67,7 +67,7 @@ final class ImeToolbar {
         s.dismissShortcutButton = dismissButton;
         shortcutButtons = new Button[] {s.phraseShortcutButton,
             s.clipboardShortcutButton, s.schemeButton, s.floatingShortcutButton,
-            s.textEditShortcutButton, s.undoShortcutButton, s.redoShortcutButton, s.voiceShortcutButton, s.randomDigitsShortcutButton};
+            s.textEditShortcutButton, s.undoShortcutButton, s.redoShortcutButton, s.voiceShortcutButton};
         for (Button button : shortcutButtons) bindEditor(button);
         s.imeTextEditPanel.bindShortcut(s.textEditShortcutButton);
         for (Button button : new Button[] {s.moreButton, s.symbolShortcutButton, dismissButton}) {
