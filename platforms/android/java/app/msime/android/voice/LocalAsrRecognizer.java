@@ -520,9 +520,7 @@ public final class LocalAsrRecognizer {
                 }
                 warmPages(Paths.get(modelDirectory));
             } catch (RuntimeException | LinkageError ignored) {
-                // 预热是尽力而为，失败不影响正常路径。
-            } catch (java.nio.file.InvalidPathException ignored) {
-                // 路径被恶意改写时 installed 已经拦过一次，这里不再重复报错。
+                // 预热是尽力而为，失败不影响正常路径；路径被改写成非法值时抛的 InvalidPathException 也是 RuntimeException。
             }
         }, "msime-local-asr-warm");
         thread.setDaemon(true);
