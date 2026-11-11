@@ -748,6 +748,7 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
             value.enabled(), checked -> saveTrackpad("enabled", checked)).help("打开文本编辑时显示触控板，可在面板中切回方向键");
         group.toggle("按住工具临时打开", null,
             value.holdToOpen(), checked -> saveTrackpad("hold_to_open", checked)).help("按住工具栏的文本编辑按钮打开触控板，松手返回之前的面板");
+    }
 
     private void saveTrackpad(String key, Object value) {
         savePreferences(preferences -> KeyboardSheets.child(preferences, "android_text_trackpad").put(key, value));
