@@ -246,68 +246,15 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
 
         GroupCard feedback = GroupCard.add(sectionColumn(target, "反馈"), "按键反馈");
         KeyboardFeedbackStore.Settings local = state.feedback();
-        GroupCard.Row[] soundPackRow = new GroupCard.Row[1];
-        feedback.toggle("按键音", null, local.soundEnabled(), checked -> {
-            saveFeedback(checked, null);
-            soundPackRow[0].setEnabled(checked);
-        });
-        // 按键音包在共享偏好里（随设置同步），开关在本机：关着时这一行置灰，选了也听不到。
-        JSONObject plugins = preferences.optJSONObject("plugins");
-        JSONObject keySound = plugins == null ? null : plugins.optJSONObject("key_sound");
-        String soundPack = KeySoundPackPolicy.selected(keySound == null ? null
-            : JsonPolicy.strictStringOrEmpty(keySound.opt("pack")));
-        java.util.List<KeySoundPackPolicy.Pack> soundPacks = state.soundPacks();
-        soundPackRow[0] = feedback.nav("音效", null, KeySoundPackPolicy.label(soundPacks, soundPack),
-            () -> pickSoundPack(soundPacks, soundPackRow[0]));
-        soundPackRow[0].setEnabled(local.soundEnabled());
-        feedback.toggle("按键振动", null, local.hapticsEnabled(), checked -> saveFeedback(null, checked));
         feedback.toggle("按键弹出预览", null,
             settings.bool(AndroidLocalSettings.KEY_POPUP), checked -> saveLocalSetting(AndroidLocalSettings.KEY_POPUP, checked)).help("按下时在键上方显示放大的字符");
         feedback.toggle("按下时缩小", null,
             settings.bool(AndroidLocalSettings.PRESS_FEEDBACK), checked -> saveLocalSetting(AndroidLocalSettings.PRESS_FEEDBACK, checked))
             .help("按下键时缩小并下移 1 dp；关闭后按键动画、按键音、按键振动和按键弹出预览仍可用");
-        String animation = settings.choice(AndroidLocalSettings.KEY_ANIMATION);
-        GroupCard.Row[] animationRow = new GroupCard.Row[1];
-        animationRow[0] = feedback.nav("按键动画", null, animationLabel(animation),
-            () -> pickAnimation(animationRow[0]));
 
         GroupCard gestures = GroupCard.add(sectionColumn(target, "手势"), "手势");
-        boolean swipeSymbols = settings.bool(AndroidLocalSettings.SWIPE_DOWN_SYMBOLS);
-        gestures.toggle("滑动输入符号", null, swipeSymbols,
-            checked -> KeyboardSheets.saveLocal(this, AndroidLocalSettings.SWIPE_DOWN_SYMBOLS, checked,
-                this::reload, this::reload)).help("沿设定方向滑动输入角标，中文时反方向打开字母与符号选项；关闭后仍可长按");
-        String swipeDirection = settings.choice(AndroidLocalSettings.SWIPE_SYMBOLS_DIRECTION);
-        GroupCard.Row[] directionRow = new GroupCard.Row[1];
-        directionRow[0] = gestures.nav("滑动方向", null,
-            swipeDirectionLabel(swipeDirection), () -> pickSwipeDirection(swipeDirection, directionRow[0])).help("该方向直接输入角标，中文时反方向打开选项；关闭滑动输入符号后两种滑动都不生效");
-        directionRow[0].setEnabled(swipeSymbols);
         // 只管画不画，不跟着「滑动输入符号」置灰：关掉滑动后长按仍输入角标，键面上的角标仍有用（#10587）。
-        gestures.toggle("显示字母键角标", null, settings.bool(AndroidLocalSettings.LETTER_CORNER_HINTS),
-            checked -> saveLocalSetting(AndroidLocalSettings.LETTER_CORNER_HINTS, checked)).help("26 键和 14/18 键字母键右上角显示长按或滑动输入的符号；关闭后只是不显示，长按和滑动照样输入");
         // 九键的滑动单独一项、默认关闭（#5580）：九键原来没有滑动，和 26 键共用上面那个默认开着的开关会改变老用户的点按。它在共享偏好 `touch_nine_key_swipe_digits` 里、随账号同步，三端同一行、同一套文字（#10229）；本机旧值在 reload 里先迁过来。本版本没有拼音九键时不列。
-        boolean quanpinNineKey = KeyboardScheme.QUANPIN_NINE_KEY.offeredBy(edition);
-        if (quanpinNineKey) {
-            String nineKeySwipe = NineKeySwipePolicy.mode(
-                JsonPolicy.strictString(preferences.opt(NineKeySwipePolicy.PREFERENCE)));
-            GroupCard.Row[] nineKeySwipeRow = new GroupCard.Row[1];
-            nineKeySwipeRow[0] = gestures.nav("九键滑动输入数字", null,
-                nineKeySwipeLabel(nineKeySwipe), () -> pickNineKeySwipe(nineKeySwipe, nineKeySwipeRow[0])).help("沿所选方向滑动输入数字，反方向弹出字母。");
-            // 九键单独的判定距离（#6208）：键高，快速连打时手指往上带一下就会被当成上滑；26 键的「滑动输入符号」阈值不受影响。距离仍是 Android 本机设置，iOS 和鸿蒙固定 24，不随账号同步。
-            GroupCard.Row distanceRow = gestures.slider("九键滑动距离", null,
-                NineKeySwipePolicy.MIN_THRESHOLD_DP, NineKeySwipePolicy.MAX_THRESHOLD_DP,
-                NineKeySwipePolicy.THRESHOLD_STEP_DP, settings.integer(AndroidLocalSettings.NINE_KEY_SWIPE_DISTANCE),
-                value -> value + " dp", value -> saveLocalSetting(AndroidLocalSettings.NINE_KEY_SWIPE_DISTANCE, value)).help("手指移动超过这个距离才会触发；距离越大越不容易把快速连打误判成滑动");
-            distanceRow.setEnabled(!NineKeySwipePolicy.OFF.equals(nineKeySwipe));
-        }
-        String quickDeleteScope = settings.choice(AndroidLocalSettings.QUICK_DELETE_SCOPE);
-        GroupCard.Row[] quickDeleteRow = new GroupCard.Row[1];
-        quickDeleteRow[0] = gestures.nav("快速删除范围", null,
-            quickDeleteScopeLabel(quickDeleteScope), () -> pickQuickDeleteScope(quickDeleteScope, quickDeleteRow[0])).help("上滑退格松手时删除的范围；普通退格和左滑连续删除不受影响");
-        gestures.toggle("滑行输入", null,
-            settings.bool(AndroidLocalSettings.GLIDE_TYPING),
-            checked -> saveLocalSetting(AndroidLocalSettings.GLIDE_TYPING, checked)).help("在 26 键上连续滑过拼音的字母，抬手出词；在键上稍作停留可确认经过的键");
-        gestures.toggle("空格键滑动移动光标", null, settings.bool(AndroidLocalSettings.SPACE_CURSOR),
-            checked -> saveLocalSetting(AndroidLocalSettings.SPACE_CURSOR, checked));
         gestures.toggle("长按空格语音输入", null, settings.bool(AndroidLocalSettings.SPACE_VOICE),
             checked -> saveLocalSetting(AndroidLocalSettings.SPACE_VOICE, checked));
         gestures.help("退格键左滑可连续删除，保持按住再右滑可逐步恢复，松手后无法恢复；密码、无痕和禁止学习的输入框不支持此手势。上滑仍可快速删除，有备份时长按下滑可撤回。");
@@ -801,20 +748,6 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
             value.enabled(), checked -> saveTrackpad("enabled", checked)).help("打开文本编辑时显示触控板，可在面板中切回方向键");
         group.toggle("按住工具临时打开", null,
             value.holdToOpen(), checked -> saveTrackpad("hold_to_open", checked)).help("按住工具栏的文本编辑按钮打开触控板，松手返回之前的面板");
-        group.slider("水平移动距离", null,
-            NumberPolicy.strictInt(horizontal, "minimum", -1), NumberPolicy.strictInt(horizontal, "maximum", -1),
-            1, value.horizontalDp(), number -> number + " dp", number -> saveTrackpadDistance("horizontal_dp", number)).help("距离越小，左右移动字符越快");
-        group.slider("垂直移动距离", null,
-            NumberPolicy.strictInt(vertical, "minimum", -1), NumberPolicy.strictInt(vertical, "maximum", -1),
-            1, value.verticalDp(), number -> number + " dp", number -> saveTrackpadDistance("vertical_dp", number)).help("距离越小，上下移动行越快");
-        group.toggle("双击选词与三击选行", null,
-            value.tapSelection(), checked -> saveTrackpad("tap_selection", checked)).help("编辑器提供足够文字时生效；长按后拖动也可延伸选区");
-        group.toggle("逐步振动", null, value.haptics(),
-            checked -> saveTrackpad("haptics", checked)).help("跟随键盘振动和系统触感开关");
-        group.toggle("显示移动轨迹", null, value.trail(), checked -> saveTrackpad("trail", checked));
-        group.toggle("光标文字放大镜", null,
-            value.magnifier(), checked -> saveTrackpad("magnifier", checked)).help("显示光标附近文字；密码使用掩码，编辑器不提供文字时显示提示");
-    }
 
     private void saveTrackpad(String key, Object value) {
         savePreferences(preferences -> KeyboardSheets.child(preferences, "android_text_trackpad").put(key, value));
