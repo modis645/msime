@@ -12862,19 +12862,6 @@ public final class MSIMEInputService extends InputMethodService {
                 schemeButton.setStateDescription(schemeState);
             }
         }
-        if (skinButton != null) {
-            ViewPolicy.setVisible(skinButton, toolbarSkin);
-            ViewPolicy.setSelected(skinButton, ViewPolicy.isVisible(skinScroll)
-                || pendingToolbarPanel == ToolbarOrderPolicy.Item.SKIN);
-            // 同上：保存进行中的点按由 ImePanels.showSkinPicker 按 canSaveKeyboardSkin 忽略，图标不跟着变灰；会话还在建时同输入方式一样推迟。
-            ViewPolicy.setEnabled(skinButton, ToolbarReadinessPolicy.preferencePanelEnabled(toolbarSession(),
-                preferencesSnapshot != null && !preferencesDirectory.isEmpty()));
-            skinButton.setContentDescription("切换键盘皮肤；当前" + skin.title());
-            // 会话在建时和输入方式按钮一样念出这一下记下了没有（#10086），读屏用户才知道面板为什么还没出来。
-            if (Build.VERSION.SDK_INT >= 30) skinButton.setStateDescription(
-                toolbarSession() != ToolbarReadinessPolicy.Session.STARTING ? skin.title()
-                    : skin.title() + (pendingToolbarPanel == ToolbarOrderPolicy.Item.SKIN ? "，准备好后打开" : "，正在准备"));
-        }
         synchronizeReplyKeyboard();
         if (layoutSettingsButton != null) ViewPolicy.hide(layoutSettingsButton);
         if (layoutSettingsButton != null)
