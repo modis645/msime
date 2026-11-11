@@ -173,9 +173,6 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
                 preferences.optBoolean(ShuangpinKeyHintPolicy.PREFERENCE_KEY, false),
                 checked -> savePreference(ShuangpinKeyHintPolicy.PREFERENCE_KEY, checked)).help("双拼方案和粤语双拼的 26 键键盘在字母键底部显示这个键代表的声母和韵母；关闭后键面只留字母");
         }
-        layout.toggle("组字时保留 Shift", null,
-            preferences.optBoolean(QuanpinSeparatorPolicy.PREFERENCE_KEY, true),
-            checked -> savePreference(QuanpinSeparatorPolicy.PREFERENCE_KEY, checked)).help("全拼 26 键组字时左下角保留 ⇧，点一下再输字母即辅助码；默认开启，关闭后这一键改为「分词」，用来断开音节");
         int height = KeyboardHeightPolicy.heightAdjustmentToPercent(
             settings.has(AndroidLocalSettings.KEYBOARD_HEIGHT_ADJUSTMENT)
                 ? settings.integer(AndroidLocalSettings.KEYBOARD_HEIGHT_ADJUSTMENT)
