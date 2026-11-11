@@ -32,6 +32,8 @@ public final class ResourcePacks {
     public static final String VOICE_RUNTIME = "voice-runtime";
     /** 整句候选「增强」逐键重排的手机档 ONNX 模型（6x256）：发布包不带，用户选「增强」时下载；没装好时输入法用随包的句子模型。 */
     public static final String RERANK_MODEL = "rerank-model-small";
+    /** 手写识别模型（`handwriting-zh_CN.model` 与它的许可文本）：发布包不带，第一次用手写键盘时下载；设置页还能用自己下载好的文件导入。 */
+    public static final String HANDWRITING = "handwriting";
 
     /** 不联网安装时用户要自己下载的一个文件：上游文件名、下载地址和长度。资源包和本地语音模型共用。 */
     public record ImportFile(String name, String url, long size) {}

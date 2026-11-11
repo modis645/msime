@@ -64,7 +64,7 @@ public final class ResourcePackService extends Service {
     private static final List<String> PACKS = List.of(ResourcePacks.JAPANESE, ResourcePacks.LANGUAGE_DICTIONARIES,
         ResourcePacks.OFFLINE_GLOSSES, ResourcePacks.PRONUNCIATIONS, ResourcePacks.VOICE_RUNTIME,
         ResourcePacks.OCR_MODULE, ResourcePacks.WUBI, ResourcePacks.TARGET_PRONUNCIATIONS,
-        ResourcePacks.RERANK_MODEL);
+        ResourcePacks.RERANK_MODEL, ResourcePacks.HANDWRITING);
     private static final String VOICE_MODEL_PREFIX = "voice-model:";
 
     /** 一个资源包正在经历的阶段。下载完成后不再有状态。 */
@@ -278,6 +278,7 @@ public final class ResourcePackService extends Service {
             case ResourcePacks.OCR_MODULE -> "离线拍照识字模块";
             case ResourcePacks.VOICE_RUNTIME -> "本地语音运行库";
             case ResourcePacks.RERANK_MODEL -> "整句增强模型";
+            case ResourcePacks.HANDWRITING -> "手写模型";
             default -> isVoiceModel(pack) ? MODEL_TITLES.getOrDefault(pack, "本地语音模型") : pack;
         };
     }
