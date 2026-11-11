@@ -6109,8 +6109,7 @@ public final class MSIMEInputService extends InputMethodService {
         if (language) languageKeyTapped();
         if (panel == null) return;
         if (!anyToolbarPanelOpen() && connection != null) {
-            if (panel == ToolbarOrderPolicy.Item.SKIN) imePanels.showSkinMenu(skinButton);
-            else if (panel == ToolbarOrderPolicy.Item.SCHEME) imePanels.showSchemePicker();
+            if (panel == ToolbarOrderPolicy.Item.SCHEME) imePanels.showSchemePicker();
         }
         render();
     }
@@ -11211,11 +11210,6 @@ public final class MSIMEInputService extends InputMethodService {
             deferrablePanelToggle(ToolbarOrderPolicy.Item.SCHEME,
                 imeToolbar.panelToggle(() -> schemeScroll, imePanels::showSchemePicker)));
         schemeButton.setContentDescription("输入方案");
-        skinButton = shortcutButton(controls, "皮肤",
-            KeyboardShortcutIconPolicy.Icon.SKIN,
-            deferrablePanelToggle(ToolbarOrderPolicy.Item.SKIN,
-                imeToolbar.panelToggle(() -> skinScroll, () -> imePanels.showSkinMenu(skinButton))));
-        skinButton.setContentDescription("切换键盘皮肤");
         layoutSettingsButton = shortcutButton(controls, "设置",
             KeyboardShortcutIconPolicy.Icon.SETTINGS, this::showLayoutSettings);
         layoutSettingsButton.setContentDescription("键盘设置");
