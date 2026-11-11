@@ -72,9 +72,6 @@ public final class PhrasesPage extends ReloadingDetailPage {
         if (!current.phrases().isEmpty()) list.help("点一条常用语可以修改。");
         GroupCard add = GroupCard.add(target, null);
         add.button("添加常用语", null, "添加", this::showAddDialog);
-        // 社区短语包装进来就在这一页里；浏览和添加在社区短语的完整列表里，表达页的「发现短语」也通向那里。
-        add.nav("浏览社区短语包", null, null,
-            () -> CommunityFragment.browse(requireContext(), CommunityRequest.Kind.PHRASE)).help("别人分享的短语包，添加后出现在这里");
     }
 
     private void editCategory(@Nullable CommonPhrasesStore.Category category) {

@@ -34,7 +34,7 @@ import org.json.JSONObject;
  */
 public final class PrivacyPage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
-        return java.util.List.of("联网", "本机", "无痕");
+        return java.util.List.of("本机", "无痕");
     }
 
     private static final String POLICY = "https://msime.app/privacy/";
@@ -63,15 +63,6 @@ public final class PrivacyPage extends ReloadingDetailPage {
         if (target == null) return;
         rows.clear();
         String app = getString(R.string.app_name);
-        // 页首那段「本地优先」说明的是下面这组联网功能，收进这组标题的「?」，不再单独占一张卡片。
-        GroupCard network = GroupCard.add(sectionColumn(target, "联网"), "联网功能").withDividers(16);
-        network.help(app + "本地优先：拼音、词库、自造词和输入统计都在这台设备上处理和保存。只有你打开的联网功能才会连接 api.msime.app，下面逐项列出。");
-        for (InputFeatureToggle toggle : NETWORK) addToggle(network, toggle);
-
-        GroupCard community = GroupCard.add(sectionColumn(target, "联网"), "社区");
-        blockedAuthorsRow = community.nav("已屏蔽的作者", null, null, () -> CommunityBlockDialog.requireSignIn(this,
-            () -> SettingsNavigator.open(requireContext(), PageId.BLOCKED_AUTHORS, null)));
-
         GroupCard local = GroupCard.add(sectionColumn(target, "本机"), "本机数据").withDividers(16);
         for (InputFeatureToggle toggle : LOCAL) addToggle(local, toggle);
 

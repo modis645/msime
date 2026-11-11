@@ -181,25 +181,9 @@ public final class LexiconPage extends ReloadingDetailPage {
         installed.help("点进词库可以启用、停用和编辑词条。已启用的词库会一起参与候选。");
         if (!current.failure().isEmpty()) installed.note(current.failure());
 
-        GroupCard updates = GroupCard.add(sectionColumn(target, "已安装"), "词库更新");
-        updates.toggle("自动更新词库", null, updateStatus == null || updateStatus.optBoolean("enabled", true),
-            enabled -> updateDictionary("configure", enabled)).help("每天检查兼容的词库版本");
-        updates.note(DictionaryUpdates.message(updateStatus));
-        boolean updating = updateStatus != null && ("checking".equals(updateStatus.optString("phase")) || "downloading".equals(updateStatus.optString("phase")));
-        updates.nav("检查词库更新", null, null, () -> updateDictionary("check", null)).setEnabled(!updating);
-        if (updateStatus != null && updateStatus.optBoolean("can_rollback")) {
-            updates.nav("恢复上一版词库", "恢复后关闭自动更新，下次启动生效", null, () -> updateDictionary("rollback", null)).setEnabled(!updating);
-        }
-
-        GroupCard sync = GroupCard.add(sectionColumn(target, "已安装"), "同步");
-        sync.nav(PageId.DICTIONARY_SYNC.title(), null, null,
-            () -> SettingsNavigator.open(context, PageId.DICTIONARY_SYNC, null)).help("「我的词条」经自己的 WebDAV 网盘在设备之间同步");
-
         GroupCard learning = GroupCard.add(sectionColumn(target, "学习"), "学习");
         InputFeatureToggle toggle = InputFeatureToggle.LEARNING;
         learning.toggle(toggle.title(), null, current.learning(), this::saveLearning).help(toggle.description());
-        learning.nav(PageId.VOCABULARY_REVIEW.title(), null, null,
-            () -> SettingsNavigator.open(context, PageId.VOCABULARY_REVIEW, null)).help("用内置词书或自己的词表复习英文单词");
         learning.button(ClearLearningCopy.TITLE, ClearLearningCopy.SUBTITLE, ClearLearningCopy.ACTION, this::confirmClearLearning);
 
         if (ManagementUi.available()) {

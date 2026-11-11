@@ -57,7 +57,7 @@ import org.json.JSONObject;
  */
 public final class VoicePage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
-        return java.util.List.of("识别", "服务", "隐私");
+        return java.util.List.of("识别", "服务");
     }
 
     private static final String[] TRIGGER_LABELS = {"工具栏/长按空格", "无"};
@@ -239,12 +239,10 @@ public final class VoicePage extends ReloadingDetailPage {
                 value, this::reload, this::reload)).help("数值越高越容易判定说完、结束录音；调得太高，轻声说的字可能被当成停顿");
         recognition.help("停顿时间仅用于键盘内的本地识别；灵敏度仅用于点按开始、带语音活动检测的本地整段模型，按住空格时不变。系统识别自行判停，云服务仍由「说完了」或松开空格结束。这两项只保存在本机，下次本地识别生效。");
 
-        GroupCard privacy = GroupCard.add(sectionColumn(target, "隐私"), "隐私");
-        boolean contribute = local.bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO);
-        contributeRow = privacy.toggle("上传语音以改进识别", null, contribute,
-            this::onContributeChanged).help("语音片段匿名处理，可随时关闭");
-        privacy.button("删除上传过的语音样本", "删掉这台设备之前上传的语音和识别文字，不需要登录", "删除",
-            this::confirmDeleteVoiceSamples);
+        // 「隐私」组已按要求下线：上传语音的开关从界面移除，并把已开的强制写回关闭，免得没有入口可关。
+        if (local.bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO)) {
+            KeyboardSheets.saveLocal(this, AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO, false, this::reload, this::reload);
+        }
     }
 
     /**
@@ -699,23 +697,6 @@ public final class VoicePage extends ReloadingDetailPage {
             });
         }
         sheet.show();
-    }
-
-    /** 从关切到开先确认；确认前开关回到关闭，确认后才写偏好。从开切到关直接写。 */
-    private void onContributeChanged(boolean checked) {
-        GroupCard.Row row = contributeRow;
-        if (!checked) {
-            saveLocalSetting(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO, false);
-            return;
-        }
-        if (row != null) row.setChecked(false);
-        MessageDialog.confirm(requireContext(), "上传语音以改进识别？",
-            "开启后，每次语音输入的音频和识别出的文字会上传到水杉云，只用于改进语音识别。数据保存 180 天，到期自动删除；你可以随时在这里关闭。隐私模式、密码框和不允许个性化学习的输入框里不会上传。",
-            "开启", () -> {
-                GroupCard.Row current = contributeRow;
-                if (current != null) current.setChecked(true);
-                saveLocalSetting(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO, true);
-            });
     }
 
     private void saveVoice(String member, Object value) {

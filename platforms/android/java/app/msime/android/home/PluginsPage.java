@@ -116,6 +116,8 @@ public final class PluginsPage extends ReloadingDetailPage {
             for (PluginStore.Entry entry : catalog.entries()) packs.add(entry.pack());
             List<PluginCatalogPolicy.Missing> missing = PluginCatalogPolicy.missingSelections(selection, packs);
             for (String kind : PluginCatalogPolicy.PHONE_KINDS) {
+                // 音效包已按要求下线：不再列这一组，键位音效按默认走。
+                if (PluginCatalogPolicy.SOUND.equals(kind)) continue;
                 List<PluginCatalogPolicy.Pack> shown = new ArrayList<>();
                 for (PluginCatalogPolicy.Pack pack : packs) {
                     if (pack.kind().equals(kind) && PluginCatalogPolicy.usedOnPhone(pack)) shown.add(pack);

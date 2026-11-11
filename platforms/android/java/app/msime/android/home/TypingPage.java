@@ -48,7 +48,7 @@ import org.json.JSONObject;
  */
 public final class TypingPage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
-        return java.util.List.of("语言", "中文", "辅助码");
+        return java.util.List.of("语言", "中文");
     }
 
     /** 深链参数：打开时展开「添加语言」（键盘的输入方式面板「+ 添加语言」用）。 */
@@ -264,6 +264,7 @@ public final class TypingPage extends ReloadingDetailPage {
         GroupCard languages = GroupCard.add(sectionColumn(target, "语言"), "语言与方案").withDividers(58);
         List<Language> addable = new ArrayList<>(Language.values().length);
         for (Language language : Language.values()) {
+            if (language == Language.SHUANGPIN) continue;
             List<KeyboardScheme> provided = provided(language, edition);
             if (provided.isEmpty()) continue;
             List<KeyboardScheme> offered = offered(language, edition, state);
@@ -282,13 +283,6 @@ public final class TypingPage extends ReloadingDetailPage {
             languages.addView(KeyboardSheets.badgeNavRow(context, language.badge, language.title, null,
                 shown == null ? null : schemeLabel(shown, preferences),
                 () -> showLanguage(language, offered, applied, preferences, state)));
-            if (language == Language.SHUANGPIN && offered.contains(KeyboardScheme.NINE_KEY_SHUANGPIN)) {
-                // 九键双拼是一种键盘加一张表：面板里只选中这个键盘，表在这一页里选、编辑、导入和导出，与 iOS 的「九键双拼方案与自定义」相同。
-                String table = NineKeyShuangpinKeypad.normalizedProfile(InputViewValuePolicy.textOr(preferences,
-                    "nine_key_shuangpin_profile", NineKeyShuangpinKeypad.DEFAULT_PROFILE));
-                languages.nav("九键双拼方案与自定义", null, NineKeyShuangpinKeypad.profileTitle(table),
-                    () -> SettingsNavigator.open(context, PageId.NINE_KEY_SHUANGPIN, null));
-            }
             if (language == Language.JAPANESE && offered.contains(KeyboardScheme.JAPANESE_NINE_KEY)) {
                 InputFeatureToggle toggle = InputFeatureToggle.JAPANESE_TOGGLE_INPUT;
                 languages.toggle(toggle.title(), null,
@@ -345,46 +339,10 @@ public final class TypingPage extends ReloadingDetailPage {
             checked -> savePreferences(values -> KeyboardSheets.child(values, "fuzzy_pinyin").put("enabled", checked))).help("如 z/zh、an/ang 不分");
         chinese.nav("模糊音规则", null, null,
             () -> SettingsNavigator.open(context, PageId.FUZZY_PINYIN, null)).help("逐项选择需要的声母和韵母");
-        InputFeatureToggle single = InputFeatureToggle.SINGLE_CHARACTER_ONLY;
-        chinese.toggle(single.title(), null,
-            preferences.optBoolean(single.key(), single.enabledByDefault()),
-            checked -> savePreferences(values -> values.put(single.key(), checked))).help(single.description());
         InputFeatureToggle backspace = InputFeatureToggle.BACKSPACE_REVERTS_SELECTION;
         chinese.toggle(backspace.title(), null,
             preferences.optBoolean(backspace.key(), backspace.enabledByDefault()),
             on -> savePreferences(values -> values.put(backspace.key(), on))).help(backspace.description());
-        // 临时日语读日文词典；词典没在本机时 host-api 会关掉它，键盘菜单里也置灰，这里给出下载入口。和桌面一样，不会因为它自己去下载。
-        if (edition.temporaryJapanese() && !state.packs().contains(KeyboardScheme.JAPANESE_PACK)) {
-            packRow(chinese, state, "临时日语", "用 R 键临时输入日语要用日文词典", ResourcePacks.JAPANESE);
-        }
-
-        boolean shuangpin = SHUANGPIN.contains(applied);
-        String family = shuangpin ? "shuangpin_helpcode" : "quanpin_helpcode";
-        JSONObject helpcode = preferences.optJSONObject(family);
-        String schema = helpcode == null ? (shuangpin ? "lantian" : "ziranma") : helpcode.optString("schema", "ziranma");
-        boolean helpcodeOn = helpcode == null || helpcode.optBoolean("enabled", true);
-        GroupCard aux = GroupCard.add(sectionColumn(target, "辅助码"), "辅助码");
-        aux.toggle("启用辅助码", null,
-            helpcodeOn, checked -> saveHelpcode(family, shuangpin, "enabled", checked)).help((shuangpin ? "双拼" : "全拼") + "组字时，先按 Shift 再输入的字母用来缩小候选");
-        if (helpcodeOn) {
-            JSONObject plugins = preferences.optJSONObject("plugins");
-            String selectedPack = plugins == null ? "" : plugins.optString(HelpcodeChoicePolicy.packKey(shuangpin), "");
-            aux.nav("辅助码方案", shuangpin ? "双拼" : "全拼",
-                HelpcodeChoicePolicy.rowValue(state.helpcodePacks(), selectedPack, labelOf(state.helpcodeSchemas(), schema)),
-                () -> pickHelpcode(family, shuangpin, state, schema, selectedPack));
-            // 共享设置页的同一个开关（#6997）：只关显示，Shift 筛选照常可用。缺整个对象时按各自默认（双拼显示、全拼不显示），对象里缺这一项时按 serde 的默认显示。
-            boolean shownInCandidates = helpcode == null ? shuangpin : helpcode.optBoolean("show_in_candidate_window", true);
-            aux.toggle(shuangpin ? "在候选栏中显示双拼辅助码" : "在候选栏中显示全拼辅助码", null, shownInCandidates,
-                checked -> saveHelpcode(family, shuangpin, "show_in_candidate_window", checked)).help("关掉后候选旁不再标注辅助码，Shift 筛选照常可用");
-            boolean strictFilter = helpcode != null && helpcode.optBoolean("strict_filter", false);
-            aux.toggle(shuangpin ? "双拼一码严格筛选" : "全拼一码严格筛选", null,
-                strictFilter, checked -> saveHelpcode(family, shuangpin, "strict_filter", checked)).help("关闭时一码只把匹配项前移；打开后排除辅助码不匹配的候选，两码始终严格筛选");
-            // 十四／十八键的网格辅助码（偏好 `grid`，默认关）：入口是上滑分词键，和下面只管 26 键的触发方式无关，所以排在共用的几行之后、触发方式之前。方案、候选栏显示和一码严格筛选对它同样生效。
-            boolean grid = helpcode != null && helpcode.optBoolean("grid", false);
-            aux.toggle(shuangpin ? "双拼 14/18 键辅助码" : "全拼 14/18 键辅助码", null,
-                grid, checked -> saveHelpcode(family, shuangpin, "grid", checked)).help("14 键、18 键组字后上滑「分词」键，再按字母键输入辅助码；不影响 26 键和九键");
-            if (shuangpin) helpcodeModeRows(aux, helpcode);
-        }
 
     }
 

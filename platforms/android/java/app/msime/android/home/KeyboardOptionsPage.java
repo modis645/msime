@@ -122,9 +122,6 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
         layout.toggle("英文自动大写", null,
             settings.bool(AndroidLocalSettings.AUTO_CAPITALIZATION),
             checked -> saveLocalSetting(AndroidLocalSettings.AUTO_CAPITALIZATION, checked)).help("按输入框要求自动大写句首、单词首字母或全部字母；默认关闭，需要大写时按 Shift");
-        layout.toggle("交换语言键与数字键", null,
-            settings.bool(AndroidLocalSettings.SWAP_LANGUAGE_NUMBER_KEYS),
-            checked -> saveLocalSetting(AndroidLocalSettings.SWAP_LANGUAGE_NUMBER_KEYS, checked)).help("语言键放到左侧，数字键移到原语言键位置；英文和外语键盘一起调整");
         if (current.shuangpinProfile() != null) {
             // 双拼的排法单独存在 `touch_shuangpin_layout` 里，换排法不换双拼方案。它原先在输入页双拼面板的第四层；这里与 iOS、鸿蒙一样放在键盘页。
             String shuangpinLayout = InputViewValuePolicy.textOr(preferences, "touch_shuangpin_layout", "twenty_six_key");
@@ -145,14 +142,6 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
                 pairOffered ? () -> pickLayout(current, pair) : null);
         }
         // 底行样式与顶部数字行在共享偏好里，三端相同；子页按本版本提供的键面列出几组，一组都没有（例如日语版）时不列这个入口，与鸿蒙同一条规则。说明三端相同。
-        if (TouchKeyStyle.Groups.offeredBy(edition).any())
-            layout.nav("按键布局", null, null,
-                () -> SettingsNavigator.open(requireContext(), PageId.KEY_LAYOUT_STYLES, null)).help("各类键盘的底行样式、键位和顶部数字行");
-        String spellingPosition = CandidatePreeditStylePolicy.normalize(
-            InputViewValuePolicy.textOr(preferences, "touch_spelling_position", null));
-        layout.nav("拼音显示位置", null,
-            spellingPositionLabel(spellingPosition),
-            () -> pickSpellingPosition(spellingPosition)).help("全拼、双拼、五笔和粤拼可以把正在输入的拼音放在输入框或候选栏");
         // 写进输入框的拼写是 Engine 的 `preedit`（CandidatePreeditStylePolicy.inlineSpelling）：关掉这一项后，双拼写展开的拼音，粤语双拼写展开的粤拼（#10557）。共享偏好 `shuangpin_preedit_uses_raw`，缺省为开，与 client-core 一致；标题与 iOS 候选栏页相同。候选栏画的是读音，不受这一项影响，所以说明只讲输入框。本版本两种双拼都没有时不列。
         app.msime.android.ShuangpinPreeditSettings.addRows(edition,
             (key, fallback) -> preferences.optBoolean(key, fallback), this::savePreference,

@@ -184,13 +184,7 @@ public final class ExpressionPage extends ReloadingDetailPage {
         intelligence.toggle("候选带符号", null,
             mixed == null || mixed.optBoolean("symbols", true),
             checked -> savePreferences(edit -> mixedInput(edit).put("symbols", checked))).help("全拼（26 键或 9 键）、双拼输入时，打出符号的名称就在候选里加入对应的符号，紧跟在那个词后面，例如「正负」后面是 ±").setEnabled(mixedEnabled);
-        // 候选里带 emoji / 颜文字（#5667）：Engine 早就会按拼音从随包的 msime-others.db 找匹配的 emoji 和颜文字插进候选（共享偏好 mixed_input.emoji / kaomoji），Android 只是没有开关，默认又是关的。
-        intelligence.toggle("候选带 emoji", null,
-            mixed != null && mixed.optBoolean("emoji", false),
-            checked -> savePreferences(edit -> mixedInput(edit).put("emoji", checked))).help("全拼（26 键或 9 键）、双拼输入时在候选里加入匹配的 emoji，紧跟在它描绘的词后面，例如「美国」后面是 🇺🇸").setEnabled(mixedEnabled);
-        intelligence.toggle("候选带颜文字", null,
-            mixed != null && mixed.optBoolean("kaomoji", false),
-            checked -> savePreferences(edit -> mixedInput(edit).put("kaomoji", checked))).help("全拼（26 键或 9 键）、双拼输入时在候选里加入匹配的颜文字，排在同一个词的 emoji 之后").setEnabled(mixedEnabled);
+        // 候选里带 emoji / 颜文字两个开关已按要求下线（共享偏好 mixed_input.emoji / kaomoji 保留旧值，缺键仍是关）。
 
     }
 
@@ -200,12 +194,11 @@ public final class ExpressionPage extends ReloadingDetailPage {
         boolean enabled = stored != null && stored.optBoolean("enabled", false);
         group.toggle("连续多语言输入（实验）", null,
             enabled, checked -> savePreferences(edit -> KeyboardSheets.child(edit, "multilingual_input").put("enabled", checked))).help("开启候选混输后，在全拼 26 键连续输入所选语言；完整中文优先、混合结果作为备选，至少需要两种可用语言");
-        String[] values = {"chinese", "english", "japanese"};
-        String[] labels = {"中文", "英文", "日文"};
+        String[] values = {"chinese", "english"};
+        String[] labels = {"中文", "英文"};
         JSONArray selected = stored == null ? null : stored.optJSONArray("languages");
         for (int index = 0; index < values.length; index++) {
             String language = values[index];
-            if ("japanese".equals(language) && !AppEdition.current().temporaryJapanese()) continue;
             boolean checked = selected == null;
             if (selected != null) for (int item = 0; item < selected.length(); item++) {
                 if (language.equals(selected.optString(item))) checked = true;
@@ -214,7 +207,7 @@ public final class ExpressionPage extends ReloadingDetailPage {
                 checked, on -> savePreferences(edit -> {
                     JSONObject section = KeyboardSheets.child(edit, "multilingual_input");
                     JSONArray previous = section.optJSONArray("languages");
-                    if (previous == null) previous = new JSONArray().put("chinese").put("english").put("japanese");
+                    if (previous == null) previous = new JSONArray().put("chinese").put("english");
                     JSONArray next = new JSONArray();
                     for (int item = 0; item < previous.length(); item++) {
                         String value = previous.getString(item);
@@ -222,8 +215,7 @@ public final class ExpressionPage extends ReloadingDetailPage {
                     }
                     if (on) next.put(language);
                     section.put("languages", next);
-                })).help("japanese".equals(language)
-                ? "使用已有日文词典，词典未安装或准备中时暂不参与" : null).setEnabled(enabled);
+                })).setEnabled(enabled);
         }
     }
 
