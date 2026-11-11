@@ -548,8 +548,6 @@ final class ImePanels {
 
     void showSkinMenu(Button anchor) {
         if (anchor == null || s.skinScroll == null) return;
-        // 会话还在建：记下这一下，会话和偏好就绪后打开（#10086）。
-        if (s.deferUntilSessionReady(ToolbarOrderPolicy.Item.SKIN)) return;
         if (!s.canSaveKeyboardSkin()) return;
         s.closeEmojiPicker();
         s.closeSymbolPanel();
