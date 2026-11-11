@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -56,6 +57,8 @@ final class ImeVoiceEntry {
         thread.setDaemon(true);
         return thread;
     });
+    /** 预热是否已经发起过；一个键盘进程只发起一次。 */
+    private final AtomicBoolean warmStarted = new AtomicBoolean();
     private Runnable silenceStop;
     private VoiceListeningView listening;
     private Bitmap mascot;
@@ -920,6 +923,19 @@ final class ImeVoiceEntry {
         } catch (RejectedExecutionException ignored) {
             // 键盘正在退出。
         }
+    }
+
+    /**
+     * 键盘第一次画出来时把本机语音的冷启动成本提前付掉：载入运行库、把模型文件顺序读进页缓存。只在配置了本机模型时做一次，失败不影响任何正常流程。
+     */
+    void warmLocalVoice() {
+        JSONObject voice = voicePreferences();
+        String model = JsonPolicy.strictStringOrEmpty(voice.opt("asr_model_path"));
+        if (!LocalAsrPolicy.usable(LocalAsrPolicy.PROVIDER, model)) return;
+        if (!warmStarted.compareAndSet(false, true)) return;
+        File files = s.getFilesDir();
+        if (files == null) return;
+        LocalAsrRecognizer.warm(model, files.toPath());
     }
 
     /** 只在后台解码内置贴纸；结果总是缓存给后续会话，只有发起解码的会话与面板仍在时才更新面板，取消后的旧回调不能更新新面板。 */

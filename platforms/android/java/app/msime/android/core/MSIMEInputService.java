@@ -10967,6 +10967,7 @@ public final class MSIMEInputService extends InputMethodService {
         nineKeySpellingGeneration = -1;
         loadFeedbackPreferences();
         refreshLocalSettings();
+        imeVoiceEntry.warmLocalVoice();
         File files = getFilesDir();
         clipboardMode = ClipboardModeStore.load(this);
         // 主模式和访客模式各用自己的历史目录；容量从设置页保存偏好的共享状态目录读取。

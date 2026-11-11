@@ -6,7 +6,10 @@ import android.content.res.Configuration;
 import android.media.AudioRecord;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -489,6 +492,60 @@ public final class LocalAsrRecognizer {
             return normalized.isEmpty() ? text : normalized;
         } catch (JSONException | RuntimeException | LinkageError error) {
             return text;
+        }
+    }
+
+    /** 预热是否已经做过；一个进程只做一次。 */
+    private static final AtomicBoolean WARMED = new AtomicBoolean();
+    /** 预热最多顺序读这么多字节，目录异常大时不把控件的 IO 拖住。 */
+    private static final long WARM_LIMIT_BYTES = 512L * 1024 * 1024;
+
+    /**
+     * 键盘进程起来后在后台把本机识别的冷启动成本提前付掉：载入一次运行库，再把模型目录里的文件顺序读一遍，让它们进内核页缓存。
+     *
+     * <p>不新增常驻内存：`.so` 是共享的只读代码页，读过的模型文件只留在可回收的页缓存里，本进程的堆和识别器状态都不变，空闲 120 秒照旧释放模型。
+     *
+     * <p>失败一律吞掉：按下语音键时还会按原路径再加载一次，预热失败只意味着这一次没提前付钱，不改变任何行为。
+     */
+    public static void warm(String modelDirectory, Path trustedRoot) {
+        if (modelDirectory == null || trustedRoot == null) return;
+        if (!WARMED.compareAndSet(false, true)) return;
+        Thread thread = new Thread(() -> {
+            try {
+                if (!LocalAsrPolicy.installed(modelDirectory, trustedRoot)) return;
+                try {
+                    requireRuntime(trustedRoot);
+                } catch (Refused refused) {
+                    return;
+                }
+                warmPages(Paths.get(modelDirectory));
+            } catch (RuntimeException | LinkageError ignored) {
+                // 预热是尽力而为，失败不影响正常路径。
+            } catch (java.nio.file.InvalidPathException ignored) {
+                // 路径被恶意改写时 installed 已经拦过一次，这里不再重复报错。
+            }
+        }, "msime-local-asr-warm");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /** 顺序读一遍模型目录里的普通文件；读过就不留引用，内存紧张时页缓存自己回收。 */
+    private static void warmPages(Path directory) {
+        long budget = WARM_LIMIT_BYTES;
+        try (DirectoryStream<Path> entries = Files.newDirectoryStream(directory)) {
+            for (Path entry : entries) {
+                if (budget <= 0) return;
+                if (!Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) continue;
+                try (InputStream input = Files.newInputStream(entry, LinkOption.NOFOLLOW_LINKS)) {
+                    byte[] buffer = new byte[64 * 1024];
+                    int read;
+                    while (budget > 0 && (read = input.read(buffer)) > 0) budget -= read;
+                } catch (IOException ignored) {
+                    // 单个文件读不动就算了，预热不是必须的。
+                }
+            }
+        } catch (IOException ignored) {
+            // 目录列不出来时同样按「没预热」处理。
         }
     }
 
