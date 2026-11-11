@@ -65,8 +65,8 @@ final class ImeToolbar {
         appliedOrder = null;
         s.shortcutBar.removeAllViews();
         s.dismissShortcutButton = dismissButton;
-        shortcutButtons = new Button[] {s.emojiShortcutButton, s.phraseShortcutButton,
-            s.clipboardShortcutButton, s.skinButton, s.schemeButton, s.floatingShortcutButton,
+        shortcutButtons = new Button[] {s.phraseShortcutButton,
+            s.clipboardShortcutButton, s.schemeButton, s.floatingShortcutButton,
             s.textEditShortcutButton, s.undoShortcutButton, s.redoShortcutButton, s.voiceShortcutButton, s.randomDigitsShortcutButton};
         for (Button button : shortcutButtons) bindEditor(button);
         s.imeTextEditPanel.bindShortcut(s.textEditShortcutButton);
@@ -193,17 +193,14 @@ final class ImeToolbar {
         for (Button button : shortcutButtons) s.shortcutBar.removeView(button);
         for (int index = 0; index < order.size(); index++) {
             Button button = switch (order.get(index)) {
-                case EMOJI -> s.emojiShortcutButton;
                 case PHRASE -> s.phraseShortcutButton;
                 case CLIPBOARD -> s.clipboardShortcutButton;
-                case SKIN -> s.skinButton;
                 case SCHEME -> s.schemeButton;
                 case FLOATING -> s.floatingShortcutButton;
                 case TEXT_EDIT -> s.textEditShortcutButton;
                 case UNDO -> s.undoShortcutButton;
                 case REDO -> s.redoShortcutButton;
                 case VOICE -> s.voiceShortcutButton;
-                case RANDOM_DIGITS -> s.randomDigitsShortcutButton;
             };
             // 算式结果保留为中间滚动区的第一项，两端按钮不参与排序。
             s.shortcutBar.addView(button, index + 1);
@@ -322,11 +319,6 @@ final class ImeToolbar {
             KeyboardShortcutIconPolicy.Icon.SYMBOL, s.imePanels::showSymbolPanel), "SoftSymbol");
         s.symbolShortcutButton.setContentDescription("打开符号面板");
         s.scriptShortcutButton.setContentDescription("切换到繁体");
-        s.emojiShortcutButton = s.shortcutButton(s.shortcutBar, "☺",
-            KeyboardShortcutIconPolicy.Icon.EMOJI,
-            panelToggle(() -> s.emojiPanel, s.imePanels::showEmojiPicker));
-        s.emojiShortcutButton.setContentDescription("表情");
-        s.keyId(s.emojiShortcutButton, "SoftEmoji");
         s.phraseShortcutButton = s.shortcutButton(s.shortcutBar, "常用语",
             KeyboardShortcutIconPolicy.Icon.PHRASE,
             panelToggle(() -> s.phraseScroll, s.imePanels::showCommonPhrases));
@@ -354,9 +346,6 @@ final class ImeToolbar {
             KeyboardShortcutIconPolicy.Icon.VOICE, s::startVoiceRecognition);
         s.voiceShortcutButton.setContentDescription("语音输入");
         s.keyId(s.voiceShortcutButton, "SoftVoice");
-        s.randomDigitsShortcutButton = s.shortcutButton(s.shortcutBar, "随",
-            KeyboardShortcutIconPolicy.Icon.RANDOM_DIGITS, s.imeLayoutRows::toggleRandomDigits);
-        s.randomDigitsShortcutButton.setContentDescription("随机数字");
         s.aiPolishShortcutButton = s.button(s.shortcutBar, "AI", s.imePanels::showAiPolish);
         s.aiPolishShortcutButton.setContentDescription("打开 AI 润色");
         s.replyShortcutButton = s.shortcutButton(s.shortcutBar, "回复",
