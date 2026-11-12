@@ -122,7 +122,12 @@ impl Prediction {
         };
         let limit = if self.pool { POOL } else { LIMIT };
         let rows = database.query_next_words(word, pinyin, limit);
+        // 续写门槛：一页里只留词频不低于最高者八分之一的行，低频续写不再占首屏。
+        let floor = rows.iter().map(|row| row.weight).max().unwrap_or(0) / 8;
         for row in rows {
+            if row.weight < floor {
+                continue;
+            }
             let seed_word = format!("{word}{}", row.value);
             let seed_pinyin = format!("{pinyin}'{}", row.key);
             self.push(&row.value, &row.key, row.weight, seed_word, seed_pinyin);

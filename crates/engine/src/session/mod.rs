@@ -1200,6 +1200,10 @@ impl Session {
         if result.commit.as_deref() != Some(selected.word.as_str()) {
             return;
         }
+        // 联想门槛：单字上屏不带续写，只有提交了两字及以上的词才提示，免得每打一个字都跳一排联想。
+        if selected.word.chars().count() < 2 {
+            return;
+        }
         let previous = selected
             .sentence_words
             .last()

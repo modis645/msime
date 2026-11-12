@@ -13,7 +13,8 @@ use crate::format::{
 };
 use crate::pinyin::jianpin::{
     build_key_like_pattern, build_mixed_jianpin_scan_limit, can_match_exact_key,
-    extract_initial_token, is_pure_jianpin, key_prefix_upper_bound, matches_mixed_segments,
+    abbreviated_hit_count, extract_initial_token, is_pure_jianpin, key_prefix_upper_bound,
+    matches_mixed_segments,
     needs_mixed_jianpin_query, QuerySource,
 };
 #[cfg(test)]
@@ -631,7 +632,27 @@ impl PinyinDatabase {
         if needs_mixed_jianpin_query(segments, source) {
             let scan_limit_value = build_mixed_jianpin_scan_limit(limit);
             let scan_limit = sql_limit(scan_limit_value);
-            // 过滤扫描行时直接写入结果；首次命中才按原提示预留，避免整页临时缓冲。
+            // 混输首屏先给简拼近似：用户只打了声母、词库音节却被补全的那些候选（abbreviated_hit_count > 0）优先。过滤扫描行时直接写入结果；首次命中才按原提示预留。
+            let mut rows = Vec::new();
+            self.visit_rows_until(&jianpin_sql(&table, scan_limit), [jp.as_str()], |row| {
+                if rows.len() >= limit {
+                    return false;
+                }
+                if !matches_mixed_segments(&row.key, segments, source)
+                    || abbreviated_hit_count(&row.key, segments) == 0
+                {
+                    return true;
+                }
+                if rows.capacity() == 0 {
+                    rows.reserve_exact(limit.min(128));
+                }
+                rows.push(row);
+                rows.len() < limit
+            });
+            if !rows.is_empty() {
+                return rows;
+            }
+            // 一页里全是逐字节原样对上的候选时，第二遍把它们补上，语义与原来的单遍扫描相同。
             let mut rows = Vec::new();
             self.visit_rows_until(&jianpin_sql(&table, scan_limit), [jp.as_str()], |row| {
                 if rows.len() >= limit {

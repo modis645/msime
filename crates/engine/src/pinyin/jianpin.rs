@@ -61,6 +61,31 @@ pub fn matches_mixed_segments(key: &str, segments: &[String], source: QuerySourc
     }) && actual_segments.next().is_none()
 }
 
+/// 有几个音节是按简拼近似对上的：用户只打了单字母或 `zh`/`ch`/`sh`，词库里的音节却比输入长。形状不符（段数不同、写全的音节对不上）时返回 0。
+pub fn abbreviated_hit_count(key: &str, segments: &[String]) -> usize {
+    let mut actual_segments = key.split('\'');
+    let mut hits = 0usize;
+    for expected in segments {
+        let Some(actual) = actual_segments.next() else {
+            return 0;
+        };
+        if actual.is_empty() || expected.is_empty() {
+            return 0;
+        }
+        if expected.len() == 1 || is_initial_token(expected) {
+            if actual.len() > expected.len() {
+                hits += 1;
+            }
+        } else if actual != expected.as_str() {
+            return 0;
+        }
+    }
+    if actual_segments.next().is_some() {
+        return 0;
+    }
+    hits
+}
+
 /// 为全拼补充双字母声母拆成两个单字母的路径；不改完整音节，最多返回 `limit` 条。
 pub fn split_initial_token_paths(segments: &[String], limit: usize) -> Vec<Vec<String>> {
     if limit == 0 || !segments.iter().any(|segment| is_initial_token(segment)) {
@@ -285,6 +310,22 @@ mod tests {
             &segments(&["n", "", "hao"]),
             QuerySource::Quanpin
         ));
+    }
+
+    #[test]
+    fn abbreviated_hits_count_expanded_syllables() {
+        let typed = segments(&["n", "hao"]);
+        assert_eq!(abbreviated_hit_count("ni'hao", &typed), 1);
+        assert_eq!(abbreviated_hit_count("n'hao", &typed), 0);
+        assert_eq!(abbreviated_hit_count("ni'hai", &typed), 0);
+        assert_eq!(abbreviated_hit_count("ni'hao'a", &typed), 0);
+        let typed = segments(&["z", "guo"]);
+        assert_eq!(abbreviated_hit_count("zhong'guo", &typed), 1);
+        assert_eq!(abbreviated_hit_count("zong'guo", &typed), 1);
+        assert_eq!(abbreviated_hit_count("z'guo", &typed), 0);
+        let typed = segments(&["zh", "guo"]);
+        assert_eq!(abbreviated_hit_count("zhong'guo", &typed), 1);
+        assert_eq!(abbreviated_hit_count("zh'guo", &typed), 0);
     }
 
     #[test]
