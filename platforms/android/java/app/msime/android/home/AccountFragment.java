@@ -219,8 +219,6 @@ public final class AccountFragment extends HomeTabFragment {
         GroupCard group = GroupCard.add(groups, "我的内容").withDividers(56);
         row(group, R.drawable.ic_ms_menu_book, "我的词库", null, null,
             () -> SettingsNavigator.open(context, PageId.LEXICON, null));
-        KeyboardSheets.help(row(group, R.drawable.ic_ms_sync, "词库同步", null, null,
-            () -> SettingsNavigator.open(context, PageId.DICTIONARY_SYNC, null)), "词库同步", "「我的词条」经自己的 WebDAV 网盘同步");
         row(group, R.drawable.ic_ms_star, "常用语", null, null,
             () -> SettingsNavigator.open(context, PageId.PHRASES, null));
         KeyboardSheets.help(row(group, R.drawable.ic_ms_download, "备份与恢复", null, null,
