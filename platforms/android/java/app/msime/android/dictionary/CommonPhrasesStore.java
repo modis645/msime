@@ -45,18 +45,15 @@ public final class CommonPhrasesStore {
         public boolean own() { return pack.isEmpty(); }
     }
 
-    /** 一个已安装的社区短语包。 */
-    public record Pack(String id, String name, int revision) {}
-
     public record Category(String id, String name) {}
 
-    /** 整份常用语；`skipped` 只在安装短语包时可能大于 0，是因为过长或重复而没有收下的条数。 */
-    public record Document(List<Phrase> phrases, List<Pack> packs, int skipped,
+    /** 整份常用语；`skipped` 是因为过长或重复而没有收下的条数。 */
+    public record Document(List<Phrase> phrases, int skipped,
             List<Category> categories, String expandedCategory) {
-        public Document(List<Phrase> phrases, List<Pack> packs, int skipped) {
-            this(phrases, packs, skipped, List.of(), "all");
+        public Document(List<Phrase> phrases, int skipped) {
+            this(phrases, skipped, List.of(), "all");
         }
-        public static final Document EMPTY = new Document(List.of(), List.of(), 0);
+        public static final Document EMPTY = new Document(List.of(), 0);
 
         public String categoryName(String id) {
             if (id.equals("all")) return "全部";
@@ -113,7 +110,7 @@ public final class CommonPhrasesStore {
         File marker = new File(directory, STARTER_MARKER);
         if (marker.exists()) return result;
         List<String> seeded = new ArrayList<>(STARTER_PHRASES.size());
-        if (result.document().phrases().isEmpty() && result.document().packs().isEmpty()
+        if (result.document().phrases().isEmpty()
                 && !SyncSignals.enabled(context)) {
             for (String text : STARTER_PHRASES) {
                 Result added = seed(context, text);
@@ -324,28 +321,6 @@ public final class CommonPhrasesStore {
         }
     }
 
-    /**
-     * 安装一个社区短语包。
-     *
-     * @param resource 社区条目的原始 JSON（`CommunityCatalog.Item#raw`），原样交给 client-services 校验
-     */
-    public static Result installPack(Context context, JSONObject resource) {
-        try {
-            return perform(context, action("install_pack").put("resource", resource), true);
-        } catch (JSONException error) {
-            return Result.failed(failureMessage(""));
-        }
-    }
-
-    /** 删除一个短语包，连同来自它的全部常用语。 */
-    public static Result removePack(Context context, String id) {
-        try {
-            return perform(context, action("remove_pack").put("id", id), true);
-        } catch (JSONException error) {
-            return Result.failed(failureMessage(""));
-        }
-    }
-
     /** 分类只在本机使用；操作和规则均交给共享存储，不另建 Android 文件。 */
     public static Result addCategory(Context context, String name) {
         try { return perform(context, action("add_category").put("name", name), false); }
@@ -439,19 +414,6 @@ public final class CommonPhrasesStore {
                 phrases.add(new Phrase(id, text, pack, note, category));
             }
         }
-        JSONArray rawPacks = value.optJSONArray("packs");
-        List<Pack> packs = new ArrayList<>(rawPacks == null ? 0 : rawPacks.length());
-        if (rawPacks != null) {
-            for (int index = 0; index < rawPacks.length(); index++) {
-                JSONObject pack = rawPacks.optJSONObject(index);
-                if (pack == null) continue;
-                String id = JsonPolicy.strictString(pack.opt("id"));
-                String name = JsonPolicy.strictString(pack.opt("name"));
-                Integer revision = JsonPolicy.nonNegativeInteger(pack.opt("revision"));
-                if (id == null || name == null || revision == null) continue;
-                packs.add(new Pack(id, name, revision));
-            }
-        }
         List<Category> categories = new ArrayList<>();
         JSONArray rawCategories = value.optJSONArray("categories");
         if (rawCategories != null) for (int index = 0; index < rawCategories.length(); index++) {
@@ -461,7 +423,7 @@ public final class CommonPhrasesStore {
             String name = JsonPolicy.strictString(category.opt("name"));
             if (id != null && name != null) categories.add(new Category(id, name));
         }
-        return new Document(ListPolicy.copyOrEmpty(phrases), ListPolicy.copyOrEmpty(packs),
+        return new Document(ListPolicy.copyOrEmpty(phrases),
             JsonPolicy.nonNegativeInteger(value.opt("skipped"), 0), ListPolicy.copyOrEmpty(categories),
             value.optString("expanded_category", "all"));
     }

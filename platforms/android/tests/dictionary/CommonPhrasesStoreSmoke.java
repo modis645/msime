@@ -33,7 +33,7 @@ public final class CommonPhrasesStoreSmoke {
 
         CommonPhrasesStore.Document document = new CommonPhrasesStore.Document(List.of(
             new CommonPhrasesStore.Phrase("a", "马上到", ""),
-            new CommonPhrasesStore.Phrase("b", "此致敬礼", "pack")), List.of(), 0);
+            new CommonPhrasesStore.Phrase("b", "此致敬礼", "pack")), 0);
         check(document.ownCount() == 1);
         check(document.phrases().get(0).own() && !document.phrases().get(1).own());
         check(CommonPhrasesStore.Document.EMPTY.ownCount() == 0);
