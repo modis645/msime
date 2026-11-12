@@ -12,7 +12,7 @@ use crate::types::{autocorrect_type, CandidateSource, WordItem};
 
 /// How many ranked correction cuts feed the query pipeline: the primary cut becomes the query key and the rest ride along as alternative segmentations. Dropped-initial keys such as `uan` have 10-15 equally weighted deletion targets (cuan/duan/guan/...), and k = 3 cut the list by table order before reaching the right reading (quan'li for uanli); k = 9 lifted R@1/R@3 on the deletion and mixed eval sets with no p95 change (QD:90-97).
 pub const AUTOCORRECT_CUT_KBEST: usize = 9;
-pub const ALTERNATIVE_SEGMENTATION_CANDIDATE_LIMIT: usize = 128;
+pub const ALTERNATIVE_SEGMENTATION_CANDIDATE_LIMIT: usize = 192;
 /// 被保护的那个座位只抬升「根本看不见」的读法。已经出现在首页上的读法保留权重挣来的名次：调频学习写的就是权重，
 /// 再钉一次等于把用户刚打出来的名次覆盖掉。6 是缺省页大小，而且故意不跟随每页候选数设置（QD:29-34，overlays.md §1.1）。
 /// 它和 `QuanpinDictionary::first_page_rows` 是两回事：那条问的是「这一页放不放得下」，所以跟随宿主的每页候选数；

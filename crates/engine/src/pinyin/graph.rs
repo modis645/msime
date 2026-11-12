@@ -2,7 +2,7 @@
 
 use super::syllables::{intact_piece, MAX_SYLLABLE_LENGTH};
 
-pub const SYLLABLE_GRAPH_PATH_LIMIT: usize = 32;
+pub const SYLLABLE_GRAPH_PATH_LIMIT: usize = 48;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyllableEdge {
