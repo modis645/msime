@@ -2,28 +2,19 @@ package app.msime.android;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.media.AudioAttributes;
 import android.media.AudioManager;
-import android.media.SoundPool;
 import android.view.View;
 import android.view.ViewParent;
-import app.msime.android.policy.HostOptionsPolicy;
-import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.WeakHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * 按键反馈（P23）：按键音、振动与按键动画。
  *
  * <p>按键区（{@link KeyboardKeyArea}）里的键在手指按下时就出声、振动（{@link #pressed}），抬手上屏时的点击反馈只计数、播动画，不再出声振动（#10757，规则见 {@link KeyPressFeedbackPolicy}）。候选栏、工具栏和面板不在按键区里，仍在点击时反馈。
  *
- * <p>按键音开关仍是 Android 本地的 `KeyboardFeedbackStore`；声音包取共享偏好 `plugins.key_sound.pack`，音量取 `plugins.key_sound.volume`（0–100）。包（没选时是 `default`，即随包内置的「清脆键盘」）经 `NativeClient.keySoundPack` 取到校验过的样本路径，用 `SoundPool` 按键类（其他键 / 空格 / 回车 / 退格）播放；密码框里 `default` 包一律播普通键的声音，其他包不播。样本还没加载好或加载失败时退回系统的 `FX_KEYPRESS_STANDARD`；系统关掉触摸提示音时会卸载这些音效，部分厂商系统也会屏蔽它，所以它只能兜底，不能当默认声音用。按键动画按 `touch_key_animation` 由 {@link KeyPressAnimator} 播放，`none` 保持原来的按压态。
+ * <p>按键音开关仍是 Android 本地的 `KeyboardFeedbackStore`；声音只用系统按键音（`AudioManager.FX_KEYPRESS_STANDARD`），不再播放音效包。应用有独立按键音开关和音量，使用 `playSoundEffect` 而不是触摸音效开关，避免受系统设置限制。按键动画按 `touch_key_animation` 由 {@link KeyPressAnimator} 播放，`none` 保持原来的按压态。
  */
 final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
     /** 按键类别：普通字符键。 */
@@ -35,22 +26,11 @@ final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
     /** 按键类别：退格。 */
     static final int KEY_BACKSPACE = 3;
 
+    /** 系统按键音的音量，0–1。 */
+    private static final float VOLUME = 1f;
+
     private final MSIMEInputService s;
-    private final ExecutorService loader = Executors.newSingleThreadExecutor(
-        ThreadPolicy.namedDaemonFactory("msime-key-sound"));
-    private JSONObject preferencesSeen;
-    private AndroidLocalSettings.Snapshot localSeen;
-    private String packId = "default";
-    private float volume = 1f;
     private KeyPressAnimator.Style animation = KeyPressAnimator.Style.NONE;
-    /** 当前声音包加载出的样本；没有（加载中或失败）时为 null，此时用系统按键音。 */
-    private volatile PackSounds sounds;
-    private String loadingPack = "";
-    private String loadingSource = "";
-    /** 每次加载用独立身份，避免同一包先后两次请求互相冒认。 */
-    private Object loadingRequest;
-    /** 当前请求解析音效包时使用的状态目录；同一包 ID 换目录也必须重新加载。 */
-    private String soundSource = "";
     /** 原按钮 → 键面替身，见 {@link #stageFace}。 */
     private final Map<View, WeakReference<View>> faces = new WeakHashMap<>();
     /** 按下时已经出声振动过的键（按用户看得见的键面记），在它的点击到来之前武装着。 */
@@ -60,20 +40,6 @@ final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
         this.s = s;
     }
 
-    /** 一个声音包在 SoundPool 里的四个样本 id；0 表示该类没有样本，回落到普通键的样本。 */
-    private record PackSounds(String id, String source, SoundPool pool,
-                              int standard, int space, int enter, int backspace) {
-        int sample(int keyClass) {
-            int value = switch (keyClass) {
-                case KEY_SPACE -> space;
-                case KEY_ENTER -> enter;
-                case KEY_BACKSPACE -> backspace;
-                default -> standard;
-            };
-            return value != 0 ? value : standard;
-        }
-    }
-
     /**
      * 按键区里一根手指按下命中 `key`：这时就出声、振动，并武装这个键，它在按下分发里或抬手时的点击不再出声振动。调试计数和按键动画仍留给点击，每次按键只算一次。这个键此刻点了也不做事时（{@link MSIMEInputService#pressGivesFeedback}）什么也不给，返回 null。
      */
@@ -81,7 +47,7 @@ final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
         View face = visible(key);
         if (!s.pressGivesFeedback(face)) return null;
         refreshPreferences();
-        if (s.soundEnabled) playSound(classify(face));
+        if (s.soundEnabled) playSound();
         if (s.hapticsEnabled) KeyboardHaptics.play(s.vibrator, face, s.hapticStrength);
         return pressGate.arm(face);
     }
@@ -144,50 +110,12 @@ final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
         return KEY_STANDARD;
     }
 
-    /** 偏好里的声音包 id；空值按 `default`。 */
-    static String packFor(JSONObject preferences) {
-        JSONObject plugins = preferences == null ? null : preferences.optJSONObject("plugins");
-        JSONObject keySound = plugins == null ? null : plugins.optJSONObject("key_sound");
-        String pack = keySound == null ? "" : JsonPolicy.strictStringOrEmpty(keySound.opt("pack"));
-        return pack == null || pack.isEmpty() ? "default" : pack;
-    }
-
-    /** 0–100 的音量换成 SoundPool 的 0–1。 */
-    static float volumeFor(int percent) {
-        return BoundsPolicy.bounded(percent, 0, 100) / 100f;
-    }
-
-    /** 共享偏好里的音量必须是 JSON 整数；异常值按 100% 处理。 */
-    static int volumePreference(Object raw) {
-        return NumberPolicy.strictInt(raw, 100);
-    }
-
     private void refreshPreferences() {
-        JSONObject preferences = s.preferencesSnapshot == null ? null
-            : s.preferencesSnapshot.optJSONObject("preferences");
-        String source = sourceKey();
-        if (preferences == preferencesSeen && s.localSettings == localSeen
-                && source.equals(soundSource)) return;
-        preferencesSeen = preferences;
-        localSeen = s.localSettings;
-        String nextPack = packFor(preferences);
-        if (!nextPack.equals(packId) || !source.equals(soundSource)) clearLoading();
-        packId = nextPack;
-        soundSource = source;
-        JSONObject plugins = preferences == null ? null : preferences.optJSONObject("plugins");
-        JSONObject keySound = plugins == null ? null : plugins.optJSONObject("key_sound");
-        volume = volumeFor(volumePreference(keySound == null ? null : keySound.opt("volume")));
         animation = KeyPressAnimator.Style.fromPreference(
             s.localSettings.choice(AndroidLocalSettings.KEY_ANIMATION));
-        PackSounds loaded = sounds;
-        if (KeySoundLifecyclePolicy.needsReload(
-                loaded == null ? null : loaded.id(), loaded == null ? null : loaded.source(),
-                packId, soundSource)
-                && KeySoundLifecyclePolicy.needsReload(loadingPack, loadingSource, packId, soundSource))
-            load(packId, soundSource);
     }
 
-    /** 键盘开始显示时调用：让声音包在第一下按键前就开始加载。 */
+    /** 键盘开始显示时调用；按键音不再预加载任何包，保留调用点。 */
     void prepare() {
         refreshPreferences();
     }
@@ -204,27 +132,15 @@ final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
             }
         }
         if (!audible) return;
-        if (s.soundEnabled) playSound(keyClass);
+        if (s.soundEnabled) playSound();
         if (!s.hapticsEnabled) return;
         KeyboardHaptics.play(s.vibrator, source, s.hapticStrength);
     }
 
-    private void playSound(int keyClass) {
-        PackSounds loaded = sounds;
-        if (KeySoundLifecyclePolicy.acceptsLoaded(loaded == null ? null : loaded.id(),
-                loaded == null ? null : loaded.source(), packId, soundSource)) {
-            // 密码框里不同键的不同声音会泄露按了哪些键：默认包统一播普通键的声音，其他包不播。
-            boolean password = EditorPolicy.password(s.editorInputType);
-            if (password && !"default".equals(packId)) return;
-            int sample = loaded.sample(password ? KEY_STANDARD : keyClass);
-            if (sample != 0) {
-                loaded.pool().play(sample, volume, volume, 1, 0, 1f);
-                return;
-            }
-        }
+    /** 系统按键音：应用有自己的按键音开关和音量，走 {@link AudioManager#playSoundEffect}。 */
+    private void playSound() {
         AudioManager audio = (AudioManager) s.getSystemService(Context.AUDIO_SERVICE);
-        // 声音包还没加载好时的兜底。应用有独立按键音开关和音量，使用对应接口，避免受系统触摸音效开关限制。
-        if (audio != null) audio.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, volume);
+        if (audio != null) audio.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, VOLUME);
     }
 
     private static boolean inside(View view, View ancestor) {
@@ -238,106 +154,7 @@ final class ImeKeyFeedback implements KeyboardKeyArea.PressListener {
         return false;
     }
 
-    /** 声音包所在的两个根：APK 里解出的内置包 `<filesDir>/sound-packs`，与用户安装的包所在的状态目录。 */
-    private String sourceKey() {
-        File files = s.getFilesDir();
-        if (s.preferencesDirectory != null && new File(s.preferencesDirectory).isAbsolute())
-            return s.preferencesDirectory;
-        return files == null ? "" : HostOptionsPolicy.bootstrapStateDirectory(files);
-    }
-
-    private String request(String pack, String source) throws JSONException {
-        File files = s.getFilesDir();
-        JSONObject request = new JSONObject();
-        request.put("state_root", source.isEmpty() ? JSONObject.NULL : source);
-        File soundPacks = HostOptionsPolicy.soundPacksDirectory(files);
-        request.put("sound_packs", soundPacks == null ? JSONObject.NULL : soundPacks.getAbsolutePath());
-        request.put("pack", pack);
-        return request.toString();
-    }
-
-    private void load(String pack, String source) {
-        Object requestIdentity = new Object();
-        loadingRequest = requestIdentity;
-        loadingPack = pack;
-        loadingSource = source;
-        final String body;
-        try {
-            body = request(pack, source);
-        } catch (JSONException error) {
-            clearLoading();
-            return;
-        }
-        try {
-            loader.execute(() -> {
-                PackSounds next = null;
-                try {
-                    JSONObject root = new JSONObject(NativeClient.keySoundPack(body));
-                    JSONObject value = JsonPolicy.objectValue(root);
-                    JSONObject files = value == null ? null : value.optJSONObject("sounds");
-                    if (value != null && "keys".equals(JsonPolicy.strictString(value.opt("mode")))
-                            && files != null) {
-                        SoundPool pool = new SoundPool.Builder().setMaxStreams(4)
-                            .setAudioAttributes(new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-                            .build();
-                        next = new PackSounds(pack, source, pool, sample(pool, files, "default"),
-                            sample(pool, files, "space"), sample(pool, files, "enter"),
-                            sample(pool, files, "backspace"));
-                        if (next.standard() == 0) {
-                            pool.release();
-                            next = null;
-                        }
-                    }
-                } catch (JSONException | RuntimeException | LinkageError error) {
-                    ImeLog.w("Key sound pack unavailable");
-                    next = null;
-                }
-                PackSounds loaded = next;
-                s.main.post(() -> {
-                    if (loadingRequest != requestIdentity) {
-                        if (loaded != null) release(loaded);
-                        return;
-                    }
-                    clearLoading();
-                    PackSounds previous = sounds;
-                    sounds = loaded;
-                    if (previous != null && previous != loaded) release(previous);
-                });
-            });
-        } catch (RejectedExecutionException error) {
-            clearLoading();
-        }
-    }
-
-    private void clearLoading() {
-        loadingRequest = null;
-        loadingPack = "";
-        loadingSource = "";
-    }
-
-    /** 服务销毁时调用：停掉加载线程并释放已加载的 SoundPool。还在路上的加载结果回到主线程时因请求身份失效而自行释放。 */
+    /** 服务销毁时调用；按键音不再持有任何播放资源，保留调用点。 */
     void shutdown() {
-        loader.shutdownNow();
-        clearLoading();
-        PackSounds loaded = sounds;
-        sounds = null;
-        if (loaded != null) release(loaded);
-    }
-
-    private static int sample(SoundPool pool, JSONObject files, String name) {
-        if (files.isNull(name)) return 0;
-        String path = JsonPolicy.strictStringOrEmpty(files.opt(name));
-        if (path.isEmpty() || !new File(path).isFile()) return 0;
-        return pool.load(path, 1);
-    }
-
-    private static void release(PackSounds loaded) {
-        try {
-            loaded.pool().release();
-        } catch (RuntimeException ignored) {
-            // 已经释放过。
-        }
     }
 }
