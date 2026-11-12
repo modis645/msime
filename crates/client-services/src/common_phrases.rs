@@ -103,12 +103,6 @@ pub enum CommonPhrasesAction {
         id: Uuid,
         index: usize,
     },
-    InstallPack {
-        resource: Box<CommunityResource>,
-    },
-    RemovePack {
-        id: Uuid,
-    },
     AddCategory {
         name: String,
     },
@@ -217,23 +211,6 @@ fn normalize_line_breaks(text: &str) -> String {
     text.replace("\r\n", "\n").replace('\r', "\n")
 }
 
-fn normalized_pack_texts(resource: &CommunityResource) -> (Vec<String>, usize) {
-    let mut skipped = 0;
-    let mut normalized = Vec::new();
-    for phrase in &resource.content.phrases {
-        let text = normalize_line_breaks(&phrase.text);
-        if !valid_phrase_text(&text) {
-            skipped += 1;
-            continue;
-        }
-        if normalized.is_empty() {
-            normalized.reserve(resource.content.phrases.len());
-        }
-        normalized.push(text);
-    }
-    (normalized, skipped)
-}
-
 #[derive(Clone, Debug)]
 pub struct CommonPhrasesStore {
     file: PathBuf,
@@ -266,8 +243,6 @@ impl CommonPhrasesStore {
                 .replace_with_note(id, &text, note.as_deref())
                 .map(Self::outcome),
             CommonPhrasesAction::Move { id, index } => self.move_to(id, index).map(Self::outcome),
-            CommonPhrasesAction::InstallPack { resource } => self.install_pack(&resource),
-            CommonPhrasesAction::RemovePack { id } => self.remove_pack(id).map(Self::outcome),
             CommonPhrasesAction::AddCategory { name } => {
                 self.add_category(&name).map(Self::outcome)
             }
@@ -405,88 +380,6 @@ impl CommonPhrasesStore {
             }
             let phrase = document.phrases.remove(from);
             document.phrases.insert(index, phrase);
-            Ok(())
-        })
-    }
-
-    /// 安装或更新一个社区短语包。同一个包再装一次时，用新内容替换它原有的全部条目，位置保持在原来第一条所在处；新包追加在末尾。超过本地 1000 个 UTF-16 单元的条目和包内重复的文本不收，计入 `skipped`；一条都收不下时拒绝。
-    pub fn install_pack(
-        &self,
-        resource: &CommunityResource,
-    ) -> Result<CommonPhrasesOutcome, CommonPhrasesError> {
-        if resource.kind != CommunityResourceKind::Phrase || validate_resource(resource).is_err() {
-            return Err(CommonPhrasesError::Invalid);
-        }
-        let (normalized, mut skipped) = normalized_pack_texts(resource);
-        // Borrow normalized text while finding first occurrences, then move only the accepted
-        // strings into the pack after releasing the set.
-        let mut seen = HashSet::with_capacity(normalized.len());
-        let unique = normalized
-            .iter()
-            .map(|text| seen.insert(text.as_str()))
-            .collect::<Vec<_>>();
-        drop(seen);
-        let mut texts = Vec::with_capacity(normalized.len().min(MAX_PACK_PHRASES));
-        for (text, unique) in normalized.into_iter().zip(unique) {
-            if !unique || texts.len() >= MAX_PACK_PHRASES {
-                skipped += 1;
-            } else {
-                texts.push(text);
-            }
-        }
-        if texts.is_empty() {
-            return Err(CommonPhrasesError::Invalid);
-        }
-        let pack = CommonPhrasePack {
-            id: resource.id,
-            name: resource.name.clone(),
-            revision: resource.revision,
-        };
-        let document = self.update(|document| {
-            let existing = document.packs.iter().position(|item| item.id == pack.id);
-            let insert_at = match existing {
-                Some(index) => {
-                    document.packs[index] = pack.clone();
-                    let first = document
-                        .phrases
-                        .iter()
-                        .position(|phrase| phrase.pack == Some(pack.id));
-                    document
-                        .phrases
-                        .retain(|phrase| phrase.pack != Some(pack.id));
-                    first.unwrap_or(document.phrases.len())
-                }
-                None => {
-                    if document.packs.len() >= MAX_PACKS {
-                        return Err(CommonPhrasesError::Limit);
-                    }
-                    document.packs.push(pack.clone());
-                    document.phrases.len()
-                }
-            };
-            let entries = texts.iter().map(|text| CommonPhrase {
-                id: Uuid::new_v4(),
-                text: text.clone(),
-                note: String::new(),
-                category: None,
-                pack: Some(pack.id),
-            });
-            document.phrases.splice(insert_at..insert_at, entries);
-            Ok(())
-        })?;
-        Ok(CommonPhrasesOutcome { document, skipped })
-    }
-
-    /// 卸载一个短语包，连同来自它的所有条目。
-    pub fn remove_pack(&self, id: Uuid) -> Result<CommonPhrases, CommonPhrasesError> {
-        self.update(|document| {
-            let index = document
-                .packs
-                .iter()
-                .position(|pack| pack.id == id)
-                .ok_or(CommonPhrasesError::NotFound)?;
-            document.packs.remove(index);
-            document.phrases.retain(|phrase| phrase.pack != Some(id));
             Ok(())
         })
     }
