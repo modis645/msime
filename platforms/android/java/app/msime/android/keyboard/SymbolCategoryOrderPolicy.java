@@ -16,19 +16,12 @@ public final class SymbolCategoryOrderPolicy {
         NUMBERS("numbers", "数字"),
         NETWORK("network", "网络"),
         PINYIN("pinyin", "拼音"),
-        KAOMOJI("kaomoji", "颜文字"),
         SHAPES("shapes", "形状"),
         ARROWS("arrows", "箭头"),
         PUNCTUATION("punctuation", "标点"),
         MATH("math", "数学"),
         CURRENCY("currency", "货币"),
-        HEARTS("hearts", "爱心"),
-        LETTERS("letters", "字母"),
-        GAMES("games", "游戏"),
-        CULTURE("culture", "文化"),
-        NATURE("nature", "自然"),
-        PEOPLE("people", "人物"),
-        MORE("more", "更多");
+        LETTERS("letters", "字母");
 
         public final String id;
         public final String label;

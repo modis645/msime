@@ -202,19 +202,13 @@ public final class SymbolPanelModel {
      * 写死的分类之后，是 Engine 目录里的颜文字和各类符号（#5667「文本符号过少」）。数据随词库 `msime-others.db` 发布，与 iOS 键盘和桌面面板读的是同一份；上级分类的中文名与 iOS 的 `KeyboardEmojiCatalog.symbolParentTitles` 相同，顺序按目录里的顺序。
      */
     private static final List<Category> CATALOG_CATEGORIES = List.of(
-        new Category("kaomoji", "颜文字", List.of(), KAOMOJI_CATALOG, ""),
         new Category("shapes", "形状", List.of(), SYMBOLS_CATALOG, "Stars and shapes"),
         new Category("arrows", "箭头", List.of(), SYMBOLS_CATALOG, "Arrows and lines"),
         new Category("punctuation", "标点", List.of(), SYMBOLS_CATALOG, "Punctuation"),
         new Category("math", "数学", List.of(), SYMBOLS_CATALOG, "Math"),
         new Category("currency", "货币", List.of(), SYMBOLS_CATALOG, "Currency"),
-        new Category("hearts", "爱心", List.of(), SYMBOLS_CATALOG, "Hearts"),
-        new Category("letters", "字母", List.of(), SYMBOLS_CATALOG, "Letters"),
-        new Category("games", "游戏", List.of(), SYMBOLS_CATALOG, "Games"),
-        new Category("culture", "文化", List.of(), SYMBOLS_CATALOG, "Culture"),
-        new Category("nature", "自然", List.of(), SYMBOLS_CATALOG, "Animals and nature"),
-        new Category("people", "人物", List.of(), SYMBOLS_CATALOG, "People and activity"),
-        new Category("more", "更多", List.of(), SYMBOLS_CATALOG, "More"));
+        new Category("letters", "字母", List.of(), SYMBOLS_CATALOG, "Letters"));
+);
 
     private SymbolPanelModel() { }
 

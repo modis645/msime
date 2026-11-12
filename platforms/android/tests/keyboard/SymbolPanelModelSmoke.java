@@ -241,10 +241,9 @@ public final class SymbolPanelModelSmoke {
         List<SymbolPanelModel.Category> all = SymbolPanelModel.categories(List.of(), SymbolCategoryOrderPolicy.DEFAULT_ORDER, plugins);
         List<String> ids = new java.util.ArrayList<>();
         for (SymbolPanelModel.Category category : all) ids.add(category.id());
-        int kaomoji = ids.indexOf("kaomoji");
-        check(ids.get(kaomoji + 1).equals(plugins.get(1).id()) && ids.get(kaomoji + 2).equals(plugins.get(2).id()),
-            "kaomoji groups follow 颜文字: " + ids);
-        check(ids.get(ids.size() - 1).equals(arrows.id()), "symbols packs come after the built-in categories: " + ids);
+        check(ids.get(ids.size() - 3).equals(plugins.get(1).id()) && ids.get(ids.size() - 2).equals(plugins.get(2).id()),
+            "kaomoji groups come after the built-in categories: " + ids);
+        check(ids.get(ids.size() - 1).equals(arrows.id()), "symbols packs come last: " + ids);
         check(SymbolPanelModel.categories(List.of(), SymbolCategoryOrderPolicy.DEFAULT_ORDER, List.of())
             .equals(SymbolPanelModel.categories(List.of(), SymbolCategoryOrderPolicy.DEFAULT_ORDER)), "no plugins, no change");
         check(SymbolPanelModel.initialCategory(List.of(), SymbolCategoryOrderPolicy.DEFAULT_ORDER, plugins)

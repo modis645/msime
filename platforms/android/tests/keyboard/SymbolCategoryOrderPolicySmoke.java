@@ -28,10 +28,10 @@ public final class SymbolCategoryOrderPolicySmoke {
         check(SymbolCategoryOrderPolicy.normalize(null) == null, "null writes rejected");
         List<SymbolCategoryOrderPolicy.Item> moved = SymbolCategoryOrderPolicy.move(
             defaults, SymbolCategoryOrderPolicy.Item.MATH, -1);
-        check(moved.get(10) == SymbolCategoryOrderPolicy.Item.MATH
-            && moved.get(11) == SymbolCategoryOrderPolicy.Item.PUNCTUATION,
+        check(moved.get(9) == SymbolCategoryOrderPolicy.Item.MATH
+            && moved.get(10) == SymbolCategoryOrderPolicy.Item.PUNCTUATION,
             "move preserves neighboring identities");
-        check(defaults.get(11) == SymbolCategoryOrderPolicy.Item.MATH, "move leaves source intact");
+        check(defaults.get(10) == SymbolCategoryOrderPolicy.Item.MATH, "move leaves source intact");
         boolean immutable = false;
         try { moved.clear(); } catch (UnsupportedOperationException expected) { immutable = true; }
         check(immutable, "returned order is immutable");
@@ -45,7 +45,7 @@ public final class SymbolCategoryOrderPolicySmoke {
             "model follows the custom order");
         check(SymbolPanelModel.initialCategory(List.of(), custom) == 1,
             "initial category locates 常用 by stable ID");
-        check(reordered.get(reordered.size() - 1).id().equals("more"),
+        check(reordered.get(reordered.size() - 1).id().equals("letters"),
             "all categories remain reachable");
         check(RadicalPanelModel.STROKES.size() == 15 && RadicalPanelModel.total() == 301,
             "偏旁包含 15 个笔画分类和 301 个条目");
