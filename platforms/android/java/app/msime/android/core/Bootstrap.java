@@ -29,7 +29,6 @@ public final class Bootstrap {
             installHelpcodes(context, new File(root, "bootstrap/resources/helpcodes"));
             // Before the configuration exists, so that prepare_host below finds them beside the resources and records them.
             installLanguageDictionaries(context, new File(root, "bootstrap/language-dictionaries"));
-            installSoundPacks(context, HostOptionsPolicy.soundPacksDirectory(root));
             installWordbooks(context, new File(root, "bootstrap/wordbooks"));
             File configuration = new File(root, "runtime-options.json");
             File resources = new File(root, "bootstrap/resources");
@@ -233,45 +232,6 @@ public final class Bootstrap {
         } catch (Exception error) {
             // 只记失败的类别，不带异常消息：消息里可能有应用私有目录的路径。
             android.util.Log.w("MSIMEBootstrap", "Wordbook extraction failed: " + error.getClass().getSimpleName());
-        }
-    }
-
-    /**
-     * 内置按键音包（resources/sound-packs 里 `mode = "keys"` 的包，连同各自的 plugin.toml 许可信息），解到 `<filesDir>/sound-packs/<id>/`，键盘经 `NativeClient.keySoundPack` 校验后用 SoundPool 播放其中的样本。
-     *
-     * <p>与离线释义、语言词库同样的规则：不属于校验过的词库，跟着安装包走；安装包变了就经同级的暂存目录整体替换，旧包留下的目录一起去掉。失败时键盘只用系统按键音。
-     */
-    private static void installSoundPacks(Context context, File destination) {
-        try {
-            String stamp = Long.toString(context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), 0).lastUpdateTime);
-            File marker = new File(destination, ".package");
-            if (Files.isRegularFile(marker.toPath(), LinkOption.NOFOLLOW_LINKS)
-                    && stamp.equals(readMarker(marker.toPath()))) return;
-            File staging = new File(destination.getParentFile(), "sound-packs.staging");
-            ensureSafeDirectory(destination.getParentFile().toPath());
-            deleteTree(staging);
-            ensureSafeDirectory(staging.toPath());
-            String[] packs = context.getAssets().list("sound-packs");
-            for (String pack : packs == null ? new String[0] : packs) {
-                requireAssetName(pack);
-                String[] names = context.getAssets().list("sound-packs/" + pack);
-                if (names == null || names.length == 0) continue;
-                File directory = new File(staging, pack);
-                ensureSafeDirectory(directory.toPath());
-                for (String name : names) {
-                    requireAssetName(name);
-                    try (InputStream input = context.getAssets().open("sound-packs/" + pack + "/" + name)) {
-                        copyAsset(input, new File(directory, name).toPath());
-                    }
-                }
-            }
-            writeAtomically(new File(staging, ".package").toPath(), stamp.getBytes(StandardCharsets.UTF_8));
-            deleteTree(destination);
-            Files.move(staging.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE);
-        } catch (Exception error) {
-            // Bootstrap has no editor or session input; never use this logging for keystrokes.
-            android.util.Log.w("MSIMEBootstrap", "Sound pack extraction failed", error);
         }
     }
 
