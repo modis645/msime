@@ -7,8 +7,8 @@ import java.util.List;
 public final class CommunityRequestSmoke {
     public static void main(String[] args) {
         check(CommunityRequest.kinds().size() == 4, "skins, dictionaries, replies and phrases");
-        check(List.of(Kind.SKIN, Kind.DICTIONARY, Kind.PHRASE).equals(CommunityRequest.segments()),
-            "the tab shows skins, dictionaries and phrases; replies live inside phrases");
+        check(List.of(Kind.SKIN, Kind.DICTIONARY).equals(CommunityRequest.segments()),
+            "the tab shows skins and dictionaries; replies live after the dictionaries");
         check(List.of("a", "b").equals(CommunityRequest.limitedCopy(List.of("a", "b", "c"), 2)),
             "a bounded catalogue copy keeps order and truncates at the limit");
         check(CommunityRequest.limitedCopy(List.of("a"), 0).isEmpty(),

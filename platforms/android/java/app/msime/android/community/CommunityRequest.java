@@ -89,8 +89,8 @@ public final class CommunityRequest {
 
     public static List<Kind> kinds() { return List.of(Kind.values()); }
 
-    /** 社区页顶部的三个分段，顺序即展示顺序；回复模板放在「短语」分段里作为第二个小节「AI 回复模板」。 */
-    public static List<Kind> segments() { return List.of(Kind.SKIN, Kind.DICTIONARY, Kind.PHRASE); }
+    /** 社区页顶部的两个分段，顺序即展示顺序；回复模板仍排在词库之后作为「AI 回复模板」小节。 */
+    public static List<Kind> segments() { return List.of(Kind.SKIN, Kind.DICTIONARY); }
 
     /** Copy at most {@code limit} catalogue entries for a bounded discovery section. */
     public static <T> List<T> limitedCopy(List<T> values, int limit) {

@@ -16,7 +16,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import app.msime.android.CommonPhrasesStore;
 import app.msime.android.CommunityCatalog;
 import app.msime.android.CommunityRequest;
 import app.msime.android.CustomSkinLibrary;
@@ -342,11 +341,8 @@ public final class CommunityFragment extends Fragment {
             DictionaryCollectionsStore.load(context);
         List<DictionaryCollectionsStore.Collection> collectionItems = collections.ok()
             ? collections.value().collections() : List.of();
-        CommonPhrasesStore.Result phrases = CommonPhrasesStore.load(context);
-        List<CommonPhrasesStore.Pack> packs = phrases.ok()
-            ? phrases.document().packs() : List.of();
         Map<String, CommunityAdapter.Action> values = new HashMap<>(
-            skins.size() + collectionItems.size() + packs.size());
+            skins.size() + collectionItems.size());
         for (CustomSkinLibrary.Item skin : skins) {
             values.put(CommunityAdapter.key(skin.id()), CommunityAdapter.Action.DONE);
         }
@@ -355,9 +351,6 @@ public final class CommunityFragment extends Fragment {
                     && !collection.resourceId().isEmpty()) {
                 values.put(CommunityAdapter.key(collection.resourceId()), CommunityAdapter.Action.DONE);
             }
-        }
-        for (CommonPhrasesStore.Pack pack : packs) {
-            values.put(CommunityAdapter.key(pack.id()), CommunityAdapter.Action.DONE);
         }
         return values;
     }
@@ -382,9 +375,10 @@ public final class CommunityFragment extends Fragment {
             case SKIN -> {
                 if (action == CommunityAdapter.Action.DONE) use(item); else get(item);
             }
-            case DICTIONARY, PHRASE -> {
+            case DICTIONARY -> {
                 if (action == CommunityAdapter.Action.AVAILABLE) add(item);
             }
+            case PHRASE -> { }
             case REPLY -> { }
         }
     }
@@ -438,25 +432,20 @@ public final class CommunityFragment extends Fragment {
         });
     }
 
-    /** 添加：社区词库装成命名词库，短语包装进无编码常用语；两者都会标记各自的云同步分类。 */
+    /** 添加：社区词库装成命名词库，并标记词库的云同步分类。 */
     private void add(CommunityCatalog.Item item) {
         if (item.raw() == null) return;
         adapter.setAction(item.id(), CommunityAdapter.Action.BUSY);
-        boolean dictionary = item.kind() == CommunityRequest.Kind.DICTIONARY;
         HostTask.run(this, context -> {
-            if (dictionary) {
-                DictionaryCollectionsStore.Result<DictionaryCollectionsStore.View> result =
-                    DictionaryCollectionsStore.installCommunity(context, item.raw());
-                return result.ok() ? "" : result.failure();
-            }
-            CommonPhrasesStore.Result result = CommonPhrasesStore.installPack(context, item.raw());
+            DictionaryCollectionsStore.Result<DictionaryCollectionsStore.View> result =
+                DictionaryCollectionsStore.installCommunity(context, item.raw());
             return result.ok() ? "" : result.failure();
         }, failure -> {
             if (getView() == null) return;
             boolean added = failure != null && failure.isEmpty();
             adapter.setAction(item.id(), added ? CommunityAdapter.Action.DONE : CommunityAdapter.Action.AVAILABLE);
             MsToast.show(requireContext(), added
-                ? "已添加「" + item.name() + "」" + (dictionary ? "，在词库里可以停用" : "到常用语")
+                ? "已添加「" + item.name() + "」，在词库里可以停用"
                 : failure == null || failure.isEmpty() ? "添加失败，请重试" : failure);
         });
     }
