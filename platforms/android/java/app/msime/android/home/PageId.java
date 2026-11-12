@@ -34,16 +34,6 @@ public enum PageId {
         "右侧大回车", "大回车", "顶部数字行", "数字行", "「符」与「123」互换", "符号键位置", "中/英键放在空格左边", "中英切换键", "字母键宽度", "宽窄", "键宽", "数字键盘", "空格在右列", "空格在 0 右边", "空格在 0 左边",
         "九键左侧符号", "数字键盘左侧符号", "九键数字键盘左侧符号", "左侧符号", "符号栏"),
     TOOLBAR_EDITOR("ToolbarEditorPage", "编辑工具栏", HostDeepLink.TAB_SETTINGS, "编辑工具栏"),
-    PLUGINS("PluginsPage", "插件", HostDeepLink.TAB_SETTINGS,
-        "我的插件", "社区插件", "音效包", "指令表", "短语表", "辅助码表", "单词本", "符号集", "制作插件", "新建插件", "导入插件",
-        "导入 .zip", "插件类型", "插件范围", "我的作品", "发布我的插件", "搜索插件"),
-    /** 一个已安装插件的详情，参数 `kind`、`id` 选包；从插件页进来，本身不进设置搜索。 */
-    PLUGIN_DETAIL("PluginDetailPage", "插件详情", HostDeepLink.TAB_SETTINGS),
-    /** 插件编辑器，参数 `kind`、`id` 都给时编辑那个包；从插件页或插件详情进来。 */
-    PLUGIN_EDITOR("PluginEditorPage", "新建插件", HostDeepLink.TAB_SETTINGS),
-    /** 社区里的一个插件，参数 `id` 是发布的 UUID。 */
-    COMMUNITY_PLUGIN("CommunityPluginPage", "社区插件", HostDeepLink.TAB_SETTINGS),
-    PLUGIN_PUBLISH("PluginPublishPage", "发布插件", HostDeepLink.TAB_SETTINGS),
     CHAT("ChatFragment", "AI 对话", HostDeepLink.TAB_SETTINGS),
     AI_SETTINGS("AiSettingsPage", "AI 润色与回复", HostDeepLink.TAB_SETTINGS),
     TYPING("TypingPage", "输入", HostDeepLink.TAB_SETTINGS,
