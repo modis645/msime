@@ -2048,7 +2048,6 @@ impl SyncLocal for HostLocal {
         Ok(document
             .phrases
             .into_iter()
-            .filter(|phrase| phrase.pack.is_none())
             .map(|phrase| LocalPhrase {
                 id: phrase.id.to_string(),
                 text: phrase.text,
