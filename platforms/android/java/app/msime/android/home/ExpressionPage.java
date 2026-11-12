@@ -4,33 +4,24 @@ import android.content.Context;
 import android.widget.LinearLayout;
 import androidx.annotation.Nullable;
 import app.msime.android.AppEdition;
-import app.msime.android.CommonPhrasesStore;
-import app.msime.android.CommunityCatalog;
-import app.msime.android.CommunityRequest;
 import app.msime.android.InputFeatureToggle;
 import app.msime.android.NumberPolicy;
 import app.msime.android.PredictionButtonsPolicy;
 import app.msime.android.ResourcePackService;
 import app.msime.android.ResourcePacks;
-import app.msime.android.TextPolicy;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * 表达页：标点（使用英文标点、引号样式、方头括号样式、自动补全成对标点、智能标点）、智能（整句候选三档、上屏后联想及联想时候选栏右端的按键样式、英文联想、中英混输、触发字母数、候选带符号、候选带 emoji、候选带颜文字）和发现短语（社区里的前几个短语包，末尾「浏览更多短语」进社区短语的完整列表）。
+ * 表达页：标点（使用英文标点、引号样式、方头括号样式、自动补全成对标点、智能标点）、智能（整句候选三档、上屏后联想及联想时候选栏右端的按键样式、英文联想、中英混输、触发字母数、候选带符号、候选带 emoji、候选带颜文字）。
  *
- * <p>「使用英文标点」是 `chinese_punctuation` 取反显示、写入时取反；整句候选三档写 `sentence_association`：关闭是 `word_lattice=false`，标准是 `word_lattice`，增强是 `word_lattice` 加 `neural_keyboard`。增强的逐键重排模型是资源包 {@link ResourcePacks#RERANK_MODEL}（发布包放不下）：选成增强时开始下载（另有 {@link app.msime.android.RerankModelDownload} 在 Wi-Fi 上替没选过的人下），增强开着而模型没装好时整句候选下面多一行下载状态；装好之前输入法用应用自带的模型，装好后下一次进入输入框换上。切回标准或关闭时卸掉它。发现短语列社区里 `phrase` 类的资源，「添加」经 {@link CommonPhrasesStore#installPack} 装进本机无编码常用语（它会标记云同步的「常用语」），已经装过的包显示「已添加」。
+ * <p>「使用英文标点」是 `chinese_punctuation` 取反显示、写入时取反；整句候选三档写 `sentence_association`：关闭是 `word_lattice=false`，标准是 `word_lattice`，增强是 `word_lattice` 加 `neural_keyboard`。增强的逐键重排模型是资源包 {@link ResourcePacks#RERANK_MODEL}（发布包放不下）：选成增强时开始下载（另有 {@link app.msime.android.RerankModelDownload} 在 Wi-Fi 上替没选过的人下），增强开着而模型没装好时整句候选下面多一行下载状态；装好之前输入法用应用自带的模型，装好后下一次进入输入框换上。切回标准或关闭时卸掉它。
  */
 public final class ExpressionPage extends ReloadingDetailPage {
     @Override protected java.util.List<String> sectionTitles() {
         return java.util.List.of("标点", "智能");
     }
 
-    private static final int DISCOVER_LIMIT = 8;
     private static final String[] SENTENCE_LABELS = {"关闭", "标准", "增强"};
     private static final String SENTENCE_DESCRIPTION =
         "输入多音节拼音时组合整句候选；标准使用词库，增强增加神经模型重排，更准的模型要另外下载。下一词推荐由「上屏后联想」单独控制";
@@ -51,15 +42,11 @@ public final class ExpressionPage extends ReloadingDetailPage {
     private static final int MIXED_PREFIX_MAX = 8;
     private static final int MIXED_PREFIX_DEFAULT = 5;
 
-    /** 偏好、已经装过的短语包 id（就是社区资源的 id），和「增强」重排模型资源包的状态（共享层没列出它时为 null）。 */
-    private record Loaded(@Nullable JSONObject preferences, Set<String> packs, @Nullable ResourcePacks.Pack rerankModel) {}
+    /** 偏好和「增强」重排模型资源包的状态（共享层没列出它时为 null）。 */
+    private record Loaded(@Nullable JSONObject preferences, @Nullable ResourcePacks.Pack rerankModel) {}
 
     @Nullable private JSONObject preferences;
     private boolean loaded;
-    @Nullable private List<CommunityCatalog.Item> discover;
-    @Nullable private String discoverFailure;
-    private HashSet<String> installed = new HashSet<>();
-    private final Set<String> installing = new HashSet<>();
     @Nullable private ResourcePacks.Pack rerankModel;
     /** 重排模型的下载进度变了就重画；下载结束时重读安装状态。 */
     private final ResourcePackService.Listener packListener = (pack, finished) -> {
@@ -73,41 +60,20 @@ public final class ExpressionPage extends ReloadingDetailPage {
         if (loaded) render();
     }
 
-    @Override protected void onInitialReloadScheduled() {
-        // 保留发现缓存的预取契约；常用语入口已移到设置首页，不再在本页渲染。
-        loadDiscover();
-    }
-
     @Override protected void onContentDestroyed() {
         ResourcePackService.removeListener(packListener);
-        installing.clear();
     }
 
     @Override protected void reload() {
         HostTask.run(this, context -> {
             JSONObject values = KeyboardSheets.preferences(context);
-            CommonPhrasesStore.Result phrases = CommonPhrasesStore.load(context);
-            Set<String> packs = new HashSet<>(phrases.ok() ? phrases.document().packs().size() : 0);
-            if (phrases.ok()) for (CommonPhrasesStore.Pack pack : phrases.document().packs()) packs.add(pack.id());
-            return new Loaded(values, packs, ResourcePacks.pack(context.getFilesDir(), ResourcePacks.RERANK_MODEL));
+            return new Loaded(values, ResourcePacks.pack(context.getFilesDir(), ResourcePacks.RERANK_MODEL));
         }, result -> {
             loaded = true;
             preferences = result == null ? null : result.preferences();
             rerankModel = result == null ? null : result.rerankModel();
-            installed = new HashSet<>(result == null ? 0 : result.packs().size());
-            if (result != null) installed.addAll(result.packs());
             render();
         });
-    }
-
-    private void loadDiscover() {
-        HostTask.runNetwork(this, context -> new CommunityCatalog(context).list(CommunityRequest.Kind.PHRASE, "", 0, null),
-            page -> {
-                CommunityCatalog.Discovery result = CommunityCatalog.discovery(page, DISCOVER_LIMIT);
-                discover = result.items();
-                discoverFailure = result.failure();
-                if (loaded) render();
-            });
     }
 
     private void render() {
@@ -217,33 +183,6 @@ public final class ExpressionPage extends ReloadingDetailPage {
                     section.put("languages", next);
                 })).setEnabled(enabled);
         }
-    }
-
-    private android.view.View phraseRow(Context context, CommunityCatalog.Item item) {
-        List<String> parts = new ArrayList<>(2);
-        if (!item.author().isEmpty()) parts.add("@" + item.author());
-        JSONArray list = item.payload() == null ? null : item.payload().optJSONArray("phrases");
-        if (list != null) parts.add(list.length() + " 条");
-        boolean added = installed.contains(item.id());
-        boolean busy = installing.contains(item.id());
-        String label = added ? "已添加" : busy ? "添加中" : "添加";
-        return KeyboardSheets.pillRow(context, TextPolicy.initial(item.name(), "短"), item.name(),
-            parts.isEmpty() ? null : String.join(" · ", parts), label, added || busy ? null : () -> install(item));
-    }
-
-    private void install(CommunityCatalog.Item item) {
-        installing.add(item.id());
-        render();
-        HostTask.run(this, context -> CommonPhrasesStore.installPack(context, item.raw()), result -> {
-            installing.remove(item.id());
-            if (result == null || !result.ok()) {
-                MsToast.show(requireContext(), result == null ? "添加失败，请重试" : result.failure());
-            } else {
-                installed.add(item.id());
-                MsToast.show(requireContext(), "已添加「" + item.name() + "」");
-            }
-            render();
-        });
     }
 
     /** 写入引号或方头括号样式。存的就是偏好文档里的取值；写下缺省值也没关系，保存时 client-core 会把等于缺省的键省掉。 */
