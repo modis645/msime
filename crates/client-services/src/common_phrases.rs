@@ -22,14 +22,10 @@ const LOCK_FILE_NAME: &str = "CommonPhrases.json.lock";
 pub const MAX_OWN_PHRASES: usize = 200;
 /// 每条常用语最多的 UTF-16 单元数（编辑器和 Java 都按 UTF-16 计长度）。
 pub const MAX_PHRASE_UTF16: usize = 1_000;
-/// 最多安装的社区短语包个数。
-pub const MAX_PACKS: usize = 16;
-/// 每个社区短语包最多保留的条数。
-pub const MAX_PACK_PHRASES: usize = 200;
 /// 整个文件的字节上限。
 pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
 
-/// 一条常用语。`pack` 为空表示用户自己添加的，否则是它来自的社区短语包的 id。
+/// 一条常用语。
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommonPhrase {
@@ -41,16 +37,6 @@ pub struct CommonPhrase {
     /// 本机分类；未分类时不写该字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub category: Option<Uuid>,
-    pub pack: Option<Uuid>,
-}
-
-/// 一个已安装的社区短语包：id 就是社区资源的 id，`revision` 是安装时的资源版本。
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct CommonPhrasePack {
-    pub id: Uuid,
-    pub name: String,
-    pub revision: u32,
 }
 
 /// 整份常用语文档，`phrases` 的顺序就是面板里的顺序。
@@ -58,7 +44,6 @@ pub struct CommonPhrasePack {
 #[serde(deny_unknown_fields)]
 pub struct CommonPhrases {
     pub phrases: Vec<CommonPhrase>,
-    pub packs: Vec<CommonPhrasePack>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<CommonPhraseCategory>,
     /// `all` 展开全部，空串全部收起，分类 UUID 展开对应组。
@@ -73,7 +58,6 @@ impl Default for CommonPhrases {
     fn default() -> Self {
         Self {
             phrases: Vec::new(),
-            packs: Vec::new(),
             categories: Vec::new(),
             expanded_category: categories::all(),
         }
@@ -299,10 +283,7 @@ impl CommonPhrasesStore {
             return Err(CommonPhrasesError::Invalid);
         }
         self.update(|document| {
-            let own = document
-                .phrases
-                .iter()
-                .filter(|phrase| phrase.pack.is_none());
+            let own = document.phrases.iter();
             let mut count = 0;
             for phrase in own {
                 if phrase.text == text {
@@ -318,7 +299,6 @@ impl CommonPhrasesStore {
                 text: text.to_owned(),
                 note: normalized_note(note).to_owned(),
                 category: None,
-                pack: None,
             });
             Ok(())
         })
@@ -353,14 +333,13 @@ impl CommonPhrasesStore {
         }
         self.update(|document| {
             let index = position(document, id)?;
-            let pack = document.phrases[index].pack;
-            let existing: HashSet<(Option<Uuid>, &str)> = document
+            let existing: HashSet<&str> = document
                 .phrases
                 .iter()
                 .filter(|phrase| phrase.id != id)
-                .map(|phrase| (phrase.pack, phrase.text.as_str()))
+                .map(|phrase| phrase.text.as_str())
                 .collect();
-            if existing.contains(&(pack, text)) {
+            if existing.contains(text) {
                 return Err(CommonPhrasesError::Duplicate);
             }
             document.phrases[index].text = text.to_owned();
@@ -457,46 +436,22 @@ fn position(document: &CommonPhrases, id: Uuid) -> Result<usize, CommonPhrasesEr
         .ok_or(CommonPhrasesError::NotFound)
 }
 
-/// 整份文档的不变量：id 唯一且非空、正文合法、每条的包都已安装、各来源的条数在上限内且同一来源内没有重复文本。读文件和写文件之前都检查一遍。
+/// 整份文档的不变量：id 唯一且非空、正文与备注合法、条数在上限内且没有重复文本。读文件和写文件之前都检查一遍。
 fn validate(document: &CommonPhrases) -> Result<(), ()> {
     categories::validate(document)?;
-    if document.packs.len() > MAX_PACKS {
-        return Err(());
-    }
-    let mut pack_ids = HashSet::with_capacity(document.packs.len());
-    for pack in &document.packs {
-        if pack.id.is_nil()
-            || pack.revision == 0
-            || !crate::community::valid_name(&pack.name)
-            || !pack_ids.insert(pack.id)
-        {
-            return Err(());
-        }
-    }
     let mut ids = HashSet::with_capacity(document.phrases.len());
     let mut texts = HashSet::with_capacity(document.phrases.len());
-    let mut own = 0;
-    let mut per_pack = std::collections::BTreeMap::<Uuid, usize>::new();
     for phrase in &document.phrases {
         if phrase.id.is_nil()
             || !ids.insert(phrase.id)
             || !valid_phrase_text(&phrase.text)
             || !valid_phrase_note(&phrase.note)
-            || !texts.insert((phrase.pack, phrase.text.as_str()))
+            || !texts.insert(phrase.text.as_str())
         {
             return Err(());
         }
-        match phrase.pack {
-            None => own += 1,
-            Some(pack) => {
-                if !pack_ids.contains(&pack) {
-                    return Err(());
-                }
-                *per_pack.entry(pack).or_default() += 1;
-            }
-        }
     }
-    if own > MAX_OWN_PHRASES || per_pack.values().any(|count| *count > MAX_PACK_PHRASES) {
+    if document.phrases.len() > MAX_OWN_PHRASES {
         return Err(());
     }
     Ok(())
