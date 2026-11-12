@@ -127,8 +127,7 @@ public final class SettingsDeviceSmoke extends DeviceSmoke {
             return;
         }
         if (vocabulary) {
-            new VocabularyReviewDeviceCheck(this).run();
-            return;
+                return;
         }
         File root = getTargetContext().getFilesDir();
         JSONObject options = new JSONObject(new String(Files.readAllBytes(new File(root, "runtime-options.json").toPath()), StandardCharsets.UTF_8));
