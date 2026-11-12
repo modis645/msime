@@ -222,8 +222,7 @@ impl CommonPhrasesStore {
                         return Err(CommonPhrasesError::Invalid);
                     }
                     for phrase in &mut document.phrases {
-                        if phrase.pack.is_none()
-                            && phrase.text == *text
+                        if phrase.text == *text
                             && phrase_ids.contains(&phrase.id)
                         {
                             phrase.category = Some(id);
