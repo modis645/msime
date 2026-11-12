@@ -208,7 +208,6 @@ public final class SymbolPanelModel {
         new Category("math", "数学", List.of(), SYMBOLS_CATALOG, "Math"),
         new Category("currency", "货币", List.of(), SYMBOLS_CATALOG, "Currency"),
         new Category("letters", "字母", List.of(), SYMBOLS_CATALOG, "Letters"));
-);
 
     private SymbolPanelModel() { }
 
