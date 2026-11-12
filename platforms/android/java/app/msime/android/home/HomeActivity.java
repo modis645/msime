@@ -39,7 +39,6 @@ import app.msime.android.ResourcePacks;
 import app.msime.android.SchemePreferences;
 import app.msime.android.core.InputViewValuePolicy;
 import app.msime.android.policy.HostOptionsPolicy;
-import app.msime.android.core.Telemetry;
 import app.msime.android.R;
 import app.msime.android.ThreadPolicy;
 import app.msime.android.ViewPolicy;
@@ -118,7 +117,6 @@ public final class HomeActivity extends AppCompatActivity {
         super.onCreate(state);
         // 「防止截屏」（#10098）：窗口显示前按本地设置加上 FLAG_SECURE。
         ScreenCaptureProtection.apply(this);
-        Telemetry.start(this);
         AccountIdentity.register(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_home);
@@ -246,8 +244,6 @@ public final class HomeActivity extends AppCompatActivity {
             runOnUiThread(this::recreateIfSeasonChanged);
         });
         CloudSync.onResume(this);
-        // 设置窗口在前台时才轮询诊断授权，退到后台由 onPause 暂停。
-        Telemetry.resumeConsentWatch(this);
         // 打开了「上传到云端」时补传打字统计；十分钟的节流在共享层，没登录真实账号时什么都不发。
         TypingUpload.onResume(this);
         themeWorker.execute(() -> DictionaryUpdates.request(getApplicationContext(), "automatic", null));
@@ -349,7 +345,6 @@ public final class HomeActivity extends AppCompatActivity {
     }
 
     @Override protected void onPause() {
-        Telemetry.pauseConsentWatch();
         super.onPause();
     }
 

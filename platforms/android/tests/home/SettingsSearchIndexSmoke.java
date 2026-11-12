@@ -136,7 +136,7 @@ public final class SettingsSearchIndexSmoke {
             {"TYPING", "全拼 14/18 键辅助码"}, {"TYPING", "双拼 14/18 键辅助码"},
             {"EXPRESSION", "智能标点"}, {"EXPRESSION", "英文联想"},
             {"LEXICON", "记忆新词"},
-            {"PRIVACY", "匿名使用统计"}, {"PRIVACY", "剪贴板历史"},
+            {"PRIVACY", "剪贴板历史"},
             {"KEYBOARD_OPTIONS", "表情"}, {"KEYBOARD_OPTIONS", "常用语"}, {"KEYBOARD_OPTIONS", "剪贴板"},
             {"KEYBOARD_OPTIONS", "皮肤"}, {"KEYBOARD_OPTIONS", "输入方式"}, {"KEYBOARD_OPTIONS", "浮动键盘"},
             {"KEYBOARD_OPTIONS", "文本编辑"}, {"KEYBOARD_OPTIONS", "撤销"}, {"KEYBOARD_OPTIONS", "重做"},

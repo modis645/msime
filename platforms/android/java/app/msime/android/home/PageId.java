@@ -98,7 +98,7 @@ public enum PageId {
     QQ_LINKS("QqLinksPage", "绑定 QQ 群助手", HostDeepLink.TAB_ACCOUNT,
         "QQ", "绑定码", "解绑", "/stats", "群助手"),
     PRIVACY("PrivacyPage", "隐私", HostDeepLink.TAB_ACCOUNT,
-        "本地优先", "联网功能", "本机数据", "剪贴板历史", "匿名使用统计", "隐私模式",
+        "本地优先", "本机数据", "剪贴板历史", "隐私模式",
         "截屏与录屏", "防止截屏", "隐私政策"),
     /** 隐私页「社区」组进来的子页（{@link BlockedAuthorsPage}）：登录账号屏蔽的社区作者和取消屏蔽。 */
     BLOCKED_AUTHORS("BlockedAuthorsPage", "已屏蔽的作者", HostDeepLink.TAB_ACCOUNT,

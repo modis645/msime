@@ -17,14 +17,13 @@ import app.msime.android.ScreenCaptureProtection;
 import app.msime.android.ScreenCaptureProtectionPolicy;
 import app.msime.android.SystemAuthenticators;
 import app.msime.android.R;
-import app.msime.android.core.Telemetry;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.json.JSONObject;
 
 /**
- * 隐私：联网功能（匿名使用统计）、本机数据（剪贴板历史）、防止截屏、隐私模式说明和隐私政策链接。
+ * 隐私：本机数据（剪贴板历史）、防止截屏、隐私模式说明和隐私政策链接。
  *
  * <p>三个开关就是 {@link InputFeatureToggle} 里的那三项，标题和说明也取那里，本页是它们在宿主里唯一的位置（实施计划 §2.9）。隐私模式的语义在 Rust 与键盘里（P17）：这里只说明它做什么、不做什么。
  *
@@ -39,9 +38,6 @@ public final class PrivacyPage extends ReloadingDetailPage {
 
     private static final String POLICY = "https://msime.app/privacy/";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
-    private static final InputFeatureToggle[] NETWORK = {
-        InputFeatureToggle.USAGE_REPORTING,
-    };
     private static final InputFeatureToggle[] LOCAL = {InputFeatureToggle.CLIPBOARD_HISTORY};
 
     private final Map<InputFeatureToggle, GroupCard.Row> rows = new EnumMap<>(InputFeatureToggle.class);
@@ -289,8 +285,6 @@ public final class PrivacyPage extends ReloadingDetailPage {
                 MsToast.show(requireContext(), "没有保存，请重试");
             } else {
                 preferences = saved.optJSONObject("preferences");
-                // 关闭要当场停止上报并清空待发数据，不能等下次启动才读到偏好。
-                if (toggle == InputFeatureToggle.USAGE_REPORTING) Telemetry.setEnabled(requireContext(), value);
             }
             render();
         });

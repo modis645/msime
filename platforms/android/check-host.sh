@@ -632,12 +632,6 @@ if [ "$(rg -c 'CandidateTranslationPolicy\.requestsTranslation\(' "$account_serv
   echo "Android must request candidate translations only for the highlighted candidate under the highlighted scope and mark offline glosses" >&2
   exit 1
 fi
-# Turning 匿名使用统计 off has to stop reporting and clear the queue at once (the toggle promises it), not on the next start: the host process keeps Telemetry's own flag, so the privacy page must hand the saved value to Telemetry.setEnabled.
-if ! rg -q 'toggle == InputFeatureToggle\.USAGE_REPORTING\) Telemetry\.setEnabled\(' \
-    "$repo_root/platforms/android/java/app/msime/android/home/PrivacyPage.java"; then
-  echo "Android privacy page must apply the usage-reporting toggle to Telemetry when it is saved" >&2
-  exit 1
-fi
 # org.json's optBoolean accepts string values such as "true". Notice feeds and dismissal
 # acknowledgements are native envelopes, so malformed JSON must not be treated as success.
 if rg -n 'optBoolean\("ok"' \

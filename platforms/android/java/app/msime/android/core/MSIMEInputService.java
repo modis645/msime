@@ -4,7 +4,6 @@ import app.msime.android.LayoutPolicy;
 
 
 import android.inputmethodservice.InputMethodService;
-import app.msime.android.core.Telemetry;
 import app.msime.android.core.InputViewValuePolicy;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
@@ -2168,7 +2167,6 @@ public final class MSIMEInputService extends InputMethodService {
             applyCandidateAppearance(hint);
             applyTouchGeometry(hint);
         }
-        Telemetry.beginInputSession(this);
         ClipboardManager clipboard = getSystemService(ClipboardManager.class);
         if (clipboard != null) clipboard.addPrimaryClipChangedListener(clipboardWatcher);
         // 键盘进程上次没走到 onDestroy 就被回收时，发出去的图片副本还留在缓存里。
@@ -2196,8 +2194,6 @@ public final class MSIMEInputService extends InputMethodService {
         imeKeyFeedback.prepare();
         if (info != null) automaticNumberRow.enterEditor(info.inputType, info.packageName);
         if (inlineAutofill != null) inlineAutofill.showInput();
-        Telemetry.inputViewShown(this);
-        Telemetry.resumeConsentWatch(this);
         cancelInputViewRefresh();
         resumeDeferredInputStart(info);
         // 同一编辑器的键盘视图可以单独收起、再显示。收起时启动代次作废，但这不会触发新的
@@ -2301,8 +2297,6 @@ public final class MSIMEInputService extends InputMethodService {
         firstFrameArmedAt = -1;
         runSessionStartAfterFirstFrame();
         preferencesReloader.stop();
-        // 授权轮询同理只在键盘显示期间进行，下次 onStartInputView 先核对一次再接着轮询。
-        Telemetry.pauseConsentWatch();
         flushTypingStatistics();
         super.onWindowHidden();
     }
@@ -2313,8 +2307,6 @@ public final class MSIMEInputService extends InputMethodService {
         announceWubiTableMissing();
         if (session != 0 && !preferencesDirectory.isEmpty())
             preferencesReloader.start(preferencesDirectory, this::reloadPreferences);
-        // 跟随光标的候选栏自己收起再叫回窗口时不会再走 onStartInputView，这里同样恢复授权轮询；重复调用不会重复排程。
-        Telemetry.resumeConsentWatch(this);
         caretWindowHidden = false;
         // 系统或应用把窗口叫出来时可能正空闲（例如输入框获得焦点），按此刻的状态再收起。
         main.post(caretWindowSync);
@@ -2485,7 +2477,6 @@ public final class MSIMEInputService extends InputMethodService {
         onlineCandidateWorker.shutdownNow();
         aiPolishClient.close();
         connection = null;
-        Telemetry.endInputSession(this);
         imePrivacyGate.release();
         super.onDestroy();
     }
