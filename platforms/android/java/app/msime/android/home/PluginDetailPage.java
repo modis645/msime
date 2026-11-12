@@ -255,8 +255,7 @@ public final class PluginDetailPage extends ReloadingDetailPage {
                     SettingsNavigator.open(context, PageId.TYPING, args);
                 }).help("辅助码的开关和显示方式在「输入 → 辅助码」里。");
             }
-            case PluginCatalogPolicy.WORDBOOK -> use.button("背单词", null, "去背单词",
-                () -> VocabularyReviewPage.openBook(context, PluginCatalogPolicy.wordbookBookId(pack.id()))).help("这本书出现在背单词的词书里。卸载插件后复习进度仍会保留，重新安装后可以接着复习。");
+            case PluginCatalogPolicy.WORDBOOK -> use.note("这台设备上不使用这类插件，可以在电脑上使用。");
             case PluginCatalogPolicy.SYMBOL_SET -> use.help(
                 "装上即在符号面板里显示：符号组以插件名为分类排在内置符号之后，颜文字组排在「颜文字」之后。卸载后不再显示。");
             default -> use.note("这台设备上不使用这类插件，可以在电脑上使用。");
