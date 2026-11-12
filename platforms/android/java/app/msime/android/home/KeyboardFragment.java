@@ -224,7 +224,6 @@ public final class KeyboardFragment extends HomeTabFragment {
         rows.removeAllViews();
         homeRows.clear();
         HomeNavGroup appearance = HomeNavGroup.add(rows);
-        row(appearance, PageId.SKINS, R.drawable.ic_ms_palette);
         row(appearance, PageId.KEYBOARD_OPTIONS, R.drawable.ic_ms_keyboard);
         HomeNavGroup typing = HomeNavGroup.add(rows);
         row(typing, PageId.TYPING, R.drawable.ic_ms_text_fields);

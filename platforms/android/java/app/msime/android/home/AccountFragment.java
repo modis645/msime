@@ -217,9 +217,6 @@ public final class AccountFragment extends HomeTabFragment {
         Local state = local;
         Remote online = remote;
         GroupCard group = GroupCard.add(groups, "我的内容").withDividers(56);
-        row(group, R.drawable.ic_ms_palette, "我的皮肤", null, skinName(state == null ? null : state.preferences(),
-                AppMode.dark(requireContext())),
-            () -> SettingsNavigator.open(context, PageId.SKINS, null));
         row(group, R.drawable.ic_ms_menu_book, "我的词库", null, null,
             () -> SettingsNavigator.open(context, PageId.LEXICON, null));
         KeyboardSheets.help(row(group, R.drawable.ic_ms_sync, "词库同步", null, null,

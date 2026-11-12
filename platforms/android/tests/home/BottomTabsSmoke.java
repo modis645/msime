@@ -76,9 +76,8 @@ public final class BottomTabsSmoke {
 
         // 皮肤回到设置列表，归设置 tab；打开它照常压栈。
         String settingsList = read(root, SETTINGS_LIST);
-        check(settingsList.contains("row(appearance, PageId.SKINS, R.drawable.ic_ms_palette);")
-                && settingsList.contains("case SKINS: return skin;"),
-            "the settings list has the 皮肤 row with the current skin as its value");
+        check(!settingsList.contains("PageId.SKINS"),
+            "the 皮肤 row is gone: skins stay at the default and are not editable");
         String pages = read(root, PAGE_ID);
         check(pages.contains("SKINS(\"SkinsPage\", \"皮肤\", HostDeepLink.TAB_SETTINGS,")
                 && pages.contains("AI_SKIN(\"AiSkinPage\", \"AI 设计皮肤\", HostDeepLink.TAB_SETTINGS,"),
