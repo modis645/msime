@@ -93,8 +93,6 @@ public final class CommunityCatalogSmoke {
             CommunityRequest.Category.OTHER), "a dictionary carries no category");
         check((boolean) validCategory.invoke(null, CommunityRequest.Kind.REPLY, null),
             "a reply set without a category is valid");
-        check(!(boolean) validCategory.invoke(null, CommunityRequest.Kind.PHRASE,
-            CommunityRequest.Category.OTHER), "a phrase pack carries no category");
         check("synthetic name".equals(JsonPolicy.strictString("synthetic name")),
             "community string fields accept strings");
         check(JsonPolicy.strictString(42) == null,

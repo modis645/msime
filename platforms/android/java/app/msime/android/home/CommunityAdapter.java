@@ -29,9 +29,9 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * The community listing in the design's two shapes: skins as a two-column grid of preview cards with a tonal 获取 / 使用 pill, dictionaries, phrase packs and reply templates as the rows of grouped cards with a glyph badge and an 添加 pill.
+ * The community listing in the design's two shapes: skins as a two-column grid of preview cards with a tonal 获取 / 使用 pill, dictionaries and reply templates as the rows of grouped cards with a glyph badge and an 添加 pill.
  *
- * <p>The phrase segment shows two sections, the packs and then 「AI 回复模板」, so the listing can hold a section title between two runs of rows; a run of rows is one grouped card, rounded where the run starts and ends.
+ * <p>The dictionary segment shows two sections, the dictionaries and then 「AI 回复模板」, so the listing can hold a section title between two runs of rows; a run of rows is one grouped card, rounded where the run starts and ends.
  */
 public final class CommunityAdapter extends RecyclerView.Adapter<CommunityAdapter.Holder> {
     static final int COLUMNS = 2;
@@ -54,7 +54,7 @@ public final class CommunityAdapter extends RecyclerView.Adapter<CommunityAdapte
 
     /**
      * @param onOpen open the detail sheet (larger preview, description, 举报)
-     * @param onAction the pill was pressed: get or apply a skin, add a dictionary or phrase pack
+     * @param onAction the pill was pressed: get or apply a skin, add a dictionary
      */
     public CommunityAdapter(Consumer<CommunityCatalog.Item> onOpen,
             Consumer<CommunityCatalog.Item> onAction) {
@@ -86,7 +86,7 @@ public final class CommunityAdapter extends RecyclerView.Adapter<CommunityAdapte
         if (start > 0) notifyItemChanged(start - 1);
     }
 
-    /** Start a new section, such as 「AI 回复模板」 under the phrase packs. */
+    /** Start a new section, such as 「AI 回复模板」 under the dictionaries. */
     public void appendHeader(String title) {
         entries.ensureCapacity(entries.size() + 1);
         entries.add(new Entry(null, title));
@@ -254,7 +254,7 @@ public final class CommunityAdapter extends RecyclerView.Adapter<CommunityAdapte
                 && CommunityRequest.updatedThisWeek(text, System.currentTimeMillis()));
     }
 
-    /** The tonal pill: 获取 / 使用 on a skin, 添加 / 已添加 on a dictionary or phrase pack, none on a reply template. */
+    /** The tonal pill: 获取 / 使用 on a skin, 添加 / 已添加 on a dictionary, none on a reply template. */
     private void bindPill(Context context, @Nullable TextView pill, CommunityCatalog.Item item,
             Action action) {
         if (pill == null) return;
@@ -285,7 +285,7 @@ public final class CommunityAdapter extends RecyclerView.Adapter<CommunityAdapte
         return switch (item.kind()) {
             case SKIN -> CommunitySkinSheet.installable(item)
                 ? (action == Action.DONE ? "使用" : action == Action.BUSY ? "获取中" : "获取") : "";
-            case DICTIONARY, PHRASE -> item.raw() == null ? ""
+            case DICTIONARY -> item.raw() == null ? ""
                 : action == Action.DONE ? "已添加" : action == Action.BUSY ? "添加中" : "添加";
             case REPLY -> "";
         };

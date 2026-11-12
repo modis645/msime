@@ -13,9 +13,7 @@ public final class CommunityRequest {
     public enum Kind {
         SKIN("skin", "皮肤", "搜索皮肤设计"),
         DICTIONARY("dictionary", "词库", "搜索词包"),
-        REPLY("reply", "回复模板", "搜索回复模板"),
-        /** 不带编码的常用语包，装进本机常用语；服务端的 `/apply` 不接受它，合并在本机完成。 */
-        PHRASE("phrase", "短语", "搜索短语");
+        REPLY("reply", "回复模板", "搜索回复模板");
 
         private final String id;
         private final String title;
@@ -98,30 +96,6 @@ public final class CommunityRequest {
         return new ArrayList<>(values.subList(0, BoundsPolicy.atMost(limit, values.size())));
     }
 
-    /** 一个短语包最多 200 条。 */
-    public static final int MAX_PHRASES = 200;
-    /** 每条短语最多 2000 个 UTF-16 单元，与服务端的限制一致。 */
-    public static final int MAX_PHRASE_UNITS = 2000;
-    /** 分组名最多 32 个 Unicode 字符，与 client-services 的社区资源契约一致。 */
-    public static final int MAX_PHRASE_GROUP_UNITS = 32;
-
-    /** 短语包的条数是否在 1–200 之间。 */
-    public static boolean validPhraseCount(int count) {
-        return count >= 1 && count <= MAX_PHRASES;
-    }
-
-    /** 一条短语：1–2000 个 UTF-16 单元，除换行和制表符外不含控制字符（签名之类需要换行）。 */
-    public static boolean validPhraseText(String text) {
-        if (text == null || text.isEmpty() || text.length() > MAX_PHRASE_UNITS) return false;
-        return !CommunityTextPolicy.hasDisallowedControl(text, true);
-    }
-
-    /** 分组名：可以为空，最多 32 个 Unicode 字符，不含任何控制字符。 */
-    public static boolean validPhraseGroup(String group) {
-        return TextPolicy.withinCodePoints(group, MAX_PHRASE_GROUP_UNITS)
-            && !CommunityTextPolicy.hasDisallowedControl(group, false);
-    }
-
     public static List<Category> categories() { return List.of(Category.values()); }
 
     /** The `kind` a report names this catalogue's items by. */
@@ -130,7 +104,6 @@ public final class CommunityRequest {
             case SKIN -> "skins";
             case DICTIONARY -> "dictionaries";
             case REPLY -> "replies";
-            case PHRASE -> "phrases";
         };
     }
 
@@ -146,7 +119,7 @@ public final class CommunityRequest {
     public static final int MAX_BLOCKED_AUTHORS = 500;
     /** 屏蔽作者接受的作品类型，与举报的 `kind` 是同一组值。 */
     public static final List<String> BLOCK_KINDS =
-        List.of("skins", "candidate-skins", "plugins", "dictionaries", "replies", "phrases");
+        List.of("skins", "candidate-skins", "plugins", "dictionaries", "replies");
     /** 没有登录水杉账号时点「屏蔽作者」或「已屏蔽的作者」的提示。屏蔽只认登录账号：目录按列表请求带的令牌过滤，匿名账号屏蔽的作者重装后就没了。 */
     public static final String BLOCK_SIGN_IN = "登录水杉账号后才能屏蔽作者。";
     /** 屏蔽确认框的说明，三个平台同一句。 */
@@ -264,13 +237,12 @@ public final class CommunityRequest {
     }
 
     /**
-     * 一个词库或短语包里的条数：词库数 `content.entries`，短语包数 `content.phrases`；回复模板和读不出的内容为 -1，界面上不写条数。
+     * 一个词库里的条数：数 `content.entries`；回复模板和读不出的内容为 -1，界面上不写条数。
      */
     public static int entryCount(Kind kind, org.json.JSONObject content) {
         if (content == null) return -1;
         String key = switch (kind) {
             case DICTIONARY -> "entries";
-            case PHRASE -> "phrases";
             default -> "";
         };
         if (key.isEmpty()) return -1;

@@ -71,7 +71,6 @@ public final class CommunityFragment extends Fragment {
         return switch (kind) {
             case SKIN -> "社区皮肤";
             case DICTIONARY -> "社区词库";
-            case PHRASE -> "社区短语";
             case REPLY -> "AI 回复模板";
         };
     }
@@ -378,7 +377,6 @@ public final class CommunityFragment extends Fragment {
             case DICTIONARY -> {
                 if (action == CommunityAdapter.Action.AVAILABLE) add(item);
             }
-            case PHRASE -> { }
             case REPLY -> { }
         }
     }

@@ -320,7 +320,6 @@ public final class CommunityCatalog {
         Long downloads = count(value, "downloads", null);
         Double average = decimal(value, "rating_average");
         if (saves == null || ratings == null || downloads == null || average == null) return null;
-        if (kind == CommunityRequest.Kind.PHRASE && !validPhrases(payload)) return null;
         CommunityRequest.Category category = null;
         if (skin) {
             Object raw = value.opt("category");
@@ -334,21 +333,6 @@ public final class CommunityCatalog {
         Item item = new Item(id, kind, name, TextPolicy.trimmed(description), TextPolicy.trimmed(author), saves, ratings,
             average, payload, category, owned, downloads, value);
         return validItem(item, kind) ? item : null;
-    }
-
-    /** 短语包的内容 `{phrases:[{text,group}]}`：1–200 条，每条文字与分组都合规。 */
-    private static boolean validPhrases(JSONObject content) {
-        JSONArray phrases = content == null ? null : content.optJSONArray("phrases");
-        if (phrases == null || !CommunityRequest.validPhraseCount(phrases.length())) return false;
-        for (int index = 0; index < phrases.length(); index++) {
-            JSONObject phrase = phrases.optJSONObject(index);
-            if (phrase == null) return false;
-            String text = JsonPolicy.strictString(phrase.opt("text"));
-            Object rawGroup = phrase.opt("group");
-            String group = rawGroup == null || rawGroup == JSONObject.NULL ? "" : JsonPolicy.strictString(rawGroup);
-            if (!CommunityRequest.validPhraseText(text) || !CommunityRequest.validPhraseGroup(group)) return false;
-        }
-        return true;
     }
 
     /** Keep the report endpoint safe even when a caller bypasses catalogue parsing. */

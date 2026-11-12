@@ -135,7 +135,6 @@ public final class CommunitySkinSheet {
         return switch (item.kind()) {
             case SKIN -> "获取后存进皮肤库，点「使用」才会换上；也可以在键盘的皮肤面板里选用。";
             case DICTIONARY -> "添加后作为一个命名词库启用，可以在设置的词库页停用或删除。";
-            case PHRASE -> "添加后出现在常用语里，可以在键盘的常用语面板直接上屏。";
             // 回复模板是 AI 回复用的提示词，手机上还没有本地的模板库可以装进去。
             case REPLY -> "AI 回复模板还不能在手机上添加，这里只能先看看。";
         };
