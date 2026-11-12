@@ -178,8 +178,6 @@ final class ImeVoiceEntry {
         String provider = engine == Engine.LOCAL ? LocalAsrPolicy.PROVIDER : configured.provider();
         String rawLanguage = JsonPolicy.strictString(voice.opt("language"));
         final String language = rawLanguage == null ? "zh-CN" : rawLanguage;
-        boolean contribute = s.localSettings.bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO) && s.imePrivacyGate.contributesVoice()
-            && !EditorPolicy.password(s.editorInputType);
         // 记下开始聆听时的输入位置；结果出来时位置变了就不直接上屏。
         s.captureVoiceTarget();
         show(keyArea);
@@ -203,14 +201,14 @@ final class ImeVoiceEntry {
             LocalAsrRecognizer.watchMemory(s);
             local = new LocalAsrRecognizer();
             local.diagnostics(kind -> diagnostic(session, kind));
-            local.retainAudio(contribute);
+            local.retainAudio(false);
         } else if (engine == Engine.UPLOAD) {
             upload = new HttpAsrRecognizer();
             upload.levels(level -> s.main.post(() -> leveled(session, level)));
             listening.setHint("说完后点「说完了」，识别后自动上屏");
         } else {
             streaming = new DoubaoRecognizer();
-            streaming.retainAudio(contribute);
+            streaming.retainAudio(false);
             streaming.levels(level -> s.main.post(() -> leveled(session, level)));
         }
         LocalAsrRecognizer runningLocal = local;
@@ -852,10 +850,6 @@ final class ImeVoiceEntry {
             return;
         }
         if (s.imePrivacyGate.recordsVoice()) recordVoice(elapsedMillis);
-        if (pcm != null && pcm.length > 0 && s.imePrivacyGate.contributesVoice()
-                && !EditorPolicy.password(s.editorInputType)) {
-            contribute(pcm, text, language, provider);
-        }
         s.notice(notice);
         if (holdSpaceButton != null) {
             dismiss();
@@ -900,34 +894,6 @@ final class ImeVoiceEntry {
         }
     }
 
-    private void contribute(byte[] pcm, String transcript, String language, String provider) {
-        byte[] wav = WavAudio.wrap(pcm, pcm.length, WavAudio.SAMPLE_RATE);
-        if (wav == null) return;
-        String version;
-        try {
-            version = s.getPackageManager().getPackageInfo(s.getPackageName(), 0).versionName;
-        } catch (PackageManager.NameNotFoundException error) {
-            return;
-        }
-        VoiceContributionApi.Contribution contribution = new VoiceContributionApi.Contribution(language, provider,
-            VoiceContributionApi.durationMillis(pcm.length), transcript, version == null ? "" : version, wav);
-        if (!VoiceContributionApi.valid(contribution)) return;
-        final long lifecycleGeneration = s.inputLifecycleGeneration();
-        try {
-            worker.execute(() -> {
-                if (lifecycleGeneration != s.inputLifecycleGeneration()
-                        || !s.imePrivacyGate.contributesVoice()
-                        || !AndroidLocalSettings.load(s).bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO)) return;
-                try {
-                    new VoiceContributionApi(s).upload(contribution);
-                } catch (java.io.IOException | RuntimeException error) {
-                    ImeLog.w("Voice contribution not uploaded");
-                }
-            });
-        } catch (RejectedExecutionException ignored) {
-            // 键盘正在退出。
-        }
-    }
 
     /**
      * 键盘第一次画出来时把本机语音的冷启动成本提前付掉：载入运行库、把模型文件顺序读进页缓存。只在配置了本机模型时做一次，失败不影响任何正常流程。

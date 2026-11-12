@@ -111,7 +111,6 @@ public final class AndroidLocalSettingsSmoke {
             && !voice.synced().containsKey(AndroidLocalSettings.VOICE_VAD_SENSITIVITY), "microphone timing and sensitivity stay local");
         check(!settings.bool(AndroidLocalSettings.INCOGNITO), "incognito default");
         check("before".equals(settings.choice(AndroidLocalSettings.QUICK_DELETE_SCOPE)), "quick delete keeps the cursor-before default");
-        check(!settings.bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO), "contribute audio default");
         check(settings.integer(AndroidLocalSettings.KEYBOARD_HEIGHT_ADJUSTMENT) == 0, "height default");
         check(!settings.has(AndroidLocalSettings.KEYBOARD_HEIGHT_ADJUSTMENT), "height is not explicit by default");
         check(!settings.bool(AndroidLocalSettings.DEVELOPER_DEBUG_OVERLAY), "overlay default");
@@ -256,7 +255,7 @@ public final class AndroidLocalSettingsSmoke {
         check(Boolean.FALSE.equals(synced.get(AndroidLocalSettings.SPLIT_KEYBOARD)), "split keyboard syncs its default");
         check("dongxue".equals(synced.get(AndroidLocalSettings.APP_THEME)), "synced carries explicit values");
         check(Boolean.TRUE.equals(synced.get(AndroidLocalSettings.KEY_POPUP)), "synced carries defaults");
-        for (String local : new String[] {AndroidLocalSettings.INCOGNITO, AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO,
+        for (String local : new String[] {AndroidLocalSettings.INCOGNITO,
                 AndroidLocalSettings.KEYBOARD_HEIGHT_ADJUSTMENT, AndroidLocalSettings.FLOATING_KEYBOARD,
                 AndroidLocalSettings.FLOATING_KEYBOARD_X, AndroidLocalSettings.FLOATING_KEYBOARD_Y,
                 AndroidLocalSettings.HARDWARE_CARET_CANDIDATES, AndroidLocalSettings.SPLIT_KEYBOARD_PHONE_LANDSCAPE,

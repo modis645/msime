@@ -238,11 +238,6 @@ public final class VoicePage extends ReloadingDetailPage {
             value -> KeyboardSheets.saveLocal(this, AndroidLocalSettings.VOICE_VAD_SENSITIVITY,
                 value, this::reload, this::reload)).help("数值越高越容易判定说完、结束录音；调得太高，轻声说的字可能被当成停顿");
         recognition.help("停顿时间仅用于键盘内的本地识别；灵敏度仅用于点按开始、带语音活动检测的本地整段模型，按住空格时不变。系统识别自行判停，云服务仍由「说完了」或松开空格结束。这两项只保存在本机，下次本地识别生效。");
-
-        // 「隐私」组已按要求下线：上传语音的开关从界面移除，并把已开的强制写回关闭，免得没有入口可关。
-        if (local.bool(AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO)) {
-            KeyboardSheets.saveLocal(this, AndroidLocalSettings.VOICE_CONTRIBUTE_AUDIO, false, this::reload, this::reload);
-        }
     }
 
     /**
