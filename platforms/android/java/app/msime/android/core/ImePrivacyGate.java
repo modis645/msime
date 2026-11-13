@@ -12,8 +12,6 @@ final class ImePrivacyGate {
     enum Record {
         /** 上屏字数的打字统计（`record`）。 */
         TYPING,
-        /** 按键热力图（`record_keys`）。 */
-        KEYS,
         /** 语音输入时长（`record_voice`）。 */
         VOICE_DURATION,
         /** 把系统剪贴板存进剪贴板历史。 */
@@ -70,10 +68,6 @@ final class ImePrivacyGate {
         return gate == null || gate.allows(Record.TYPING);
     }
 
-    static boolean countsKeys(boolean statisticsEnabled, boolean editorExcluded) {
-        return statisticsEnabled && !editorExcluded;
-    }
-
     static boolean capturesClipboard(boolean historyEnabled, boolean storeReady) {
         return historyEnabled && storeReady;
     }
@@ -86,11 +80,6 @@ final class ImePrivacyGate {
     /** 当前输入框与隐私模式下，这一类记录是否允许。 */
     boolean allows(Record record) {
         return allows(record, s.incognitoEnabled, s.editorInputType, imeOptions());
-    }
-
-    /** 当前输入框的按键是否计入热力图。 */
-    boolean countsKeys() {
-        return countsKeys(s.keyStatisticsEnabled, s.keyStatisticsExcluded) && allows(Record.KEYS);
     }
 
     /** 当前是否把系统剪贴板存进剪贴板历史。 */

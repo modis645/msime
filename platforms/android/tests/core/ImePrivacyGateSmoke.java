@@ -25,9 +25,6 @@ public final class ImePrivacyGateSmoke {
                     == EditorPolicy.excludesKeyStatistics(type, options), "same answer as EditorPolicy");
             }
         }
-        check(ImePrivacyGate.countsKeys(true, false), "switch on and editor allowed counts");
-        check(!ImePrivacyGate.countsKeys(false, false), "switch off never counts");
-        check(!ImePrivacyGate.countsKeys(true, true), "an excluded editor never counts");
         check(ImePrivacyGate.recordsTyping("/data/state", "你好"), "a commit with a directory is recorded");
         check(!ImePrivacyGate.recordsTyping("", "你好"), "no directory, nothing recorded");
         check(!ImePrivacyGate.recordsTyping("/data/state", ""), "an empty commit is not recorded");
