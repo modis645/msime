@@ -34,7 +34,7 @@ public final class ClipboardHistoryPolicySmoke {
             == ClipboardHistoryPolicy.Rejection.TOO_LONG,
             "a reason this host does not know must not be guessed as FULL");
 
-        check(ClipboardHistoryPolicy.DEFAULT_LIMIT == 50, "the default limit is fifty entries");
+        check(ClipboardHistoryPolicy.DEFAULT_LIMIT == 100, "the default limit is a hundred entries");
         check(ClipboardHistoryPolicy.LIMITS.length == 5
             && ClipboardHistoryPolicy.LIMITS[4] == 1000, "all supported limits are exposed");
         for (ClipboardHistoryPolicy.Rejection rejection : ClipboardHistoryPolicy.Rejection.values())
