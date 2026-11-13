@@ -1,0 +1,50 @@
+name: Fork Rust tests
+
+# 这个 fork 只出 Android，上游的 Core CI 跑的是 quality/contracts（不含 cargo test），真正跑
+# cargo test 的 Native Platform CI 用的全是 depot 自托管 runner（depot-ubuntu-24.04-8 等），
+# fork 里没有那些 runner，job 只会一直 queued。所以这里另起一个只用 GitHub 托管 ubuntu-latest
+# 的窄工作流：只跑 Android 真正依赖、且不依赖资源包与设备的那几个 crate 的测试。
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.github/workflows/fork-rust-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-rust-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-tests:
+    name: Engine, input runtime, client-core preferences
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # 安装 rust-toolchain.toml 钉住的工具链，与上游 Native Platform CI 的写法一致。
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      # 引擎的拼音/双拼/五笔、候选切分、简拼混输排序都在这里，改动这三条之后靠它兜住行为回归。
+      - name: Unit and golden tests for msime-engine
+        run: |
+          set -euo pipefail
+          cargo test --locked -p msime-engine
+      - name: Unit tests for msime-input-runtime
+        run: cargo test --locked -p msime-input-runtime
+      # 偏好键的单测只读写临时目录，不需要设备；上游把它挂在 Native Platform CI 的 Linux 作业上。
+      - name: Preference unit tests for msime-client-core
+        run: cargo test --locked -p msime-client-core --lib 'preferences::'
