@@ -16,14 +16,15 @@ public final class CandidatePreeditStylePolicySmoke {
         String candidateBar = CandidatePreeditStylePolicy.CANDIDATE_BAR;
         check(CandidatePreeditStylePolicy.normalize("candidate_bar").equals(candidateBar),
             "the candidate-bar preference is preserved");
-        check(CandidatePreeditStylePolicy.normalize("editor").equals(editor)
-                && CandidatePreeditStylePolicy.normalize(null).equals(editor)
-                && CandidatePreeditStylePolicy.normalize("invalid").equals(editor),
-            "missing and invalid preferences use the editor fallback");
-        // 桌面候选窗的 `candidate_preedit_style` 默认是 pinyin；这个值不能把触屏拼写挪出输入框。
-        check(CandidatePreeditStylePolicy.normalize(pinyin).equals(editor)
-                && CandidatePreeditStylePolicy.normalize(empty).equals(editor),
-            "candidate_preedit_style values never select the candidate bar");
+        check(CandidatePreeditStylePolicy.normalize("editor").equals(editor),
+            "the editor preference is still honoured");
+        check(CandidatePreeditStylePolicy.normalize(null).equals(candidateBar)
+                && CandidatePreeditStylePolicy.normalize("invalid").equals(candidateBar),
+            "missing and invalid preferences use the product default: the candidate bar");
+        // 桌面候选窗的 `candidate_preedit_style` 的 pinyin / empty 都不是位置值，按缺省处理。
+        check(CandidatePreeditStylePolicy.normalize(pinyin).equals(candidateBar)
+                && CandidatePreeditStylePolicy.normalize(empty).equals(candidateBar),
+            "candidate_preedit_style values never select the editor");
         check(CandidatePreeditStylePolicy.keepsSpellingOnKeyboard(candidateBar)
                 && !CandidatePreeditStylePolicy.keepsSpellingOnKeyboard(editor),
             "the candidate-bar preference keeps spelling out of the editor");
