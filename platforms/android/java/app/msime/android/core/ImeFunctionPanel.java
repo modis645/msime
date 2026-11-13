@@ -151,7 +151,8 @@ final class ImeFunctionPanel {
                     s.closeMoreTools();
                     s.toggleHandwritingScheme();
                 }, null),
-                FunctionPanelView.State.NONE, ready);
+                // 选中手写后磁贴要跟着亮：只看 selectedScheme 不够，英文盖在手写时也是手写模式。
+                toggle(s.selectedScheme == KeyboardScheme.HANDWRITING || s.handwritingActive()), ready);
             case DICTIONARY -> add(entries, states, enabled,
                 icon(item, KeyboardIconPaths.Icon.LEXICON, () -> host("LEXICON"), null),
                 FunctionPanelView.State.NONE, true);
