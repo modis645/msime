@@ -330,11 +330,158 @@ pub fn build_bundle(
     }
 }
 
-fn sanitized_crash(at: &str, message: &str, stack: &str) -> Option<Value> {
-    if message.trim().is_empty() {
+/// 崩溃记录来自每行一条 `{at, message, stack}` 的文件。
+fn read_crash_logs(source: Option<&str>) -> Result<Section, DiagnosticsError> {
+    read_section(source, MAX_CRASH_LOGS, crash_record)
+}
+
+/// 读一个来源文件的最后 [`MAX_SOURCE_BYTES`] 字节，逐行交给 `accept` 校验，保留最近的 `limit` 行。
+fn read_section(
+    source: Option<&str>,
+    limit: usize,
+    accept: fn(&[u8]) -> Option<Value>,
+) -> Result<Section, DiagnosticsError> {
+    let mut section = Section {
+        records: Vec::new(),
+        count: SectionCount::default(),
+    };
+    let Some(source) = source else {
+        return Ok(section);
+    };
+    let path = Path::new(source);
+    let metadata = match std::fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(section),
+        Err(error) => return Err(DiagnosticsError::Source(error)),
+    };
+    if !metadata.file_type().is_file() {
+        return Err(DiagnosticsError::Invalid);
+    }
+    let mut file = crate::storage::open_private_file_in(path).map_err(DiagnosticsError::Source)?;
+    let skip_partial = metadata.len() > MAX_SOURCE_BYTES;
+    if skip_partial {
+        file.seek(SeekFrom::Start(metadata.len() - MAX_SOURCE_BYTES))
+            .map_err(DiagnosticsError::Source)?;
+    }
+    let mut reader = BufReader::new(file.take(MAX_SOURCE_BYTES));
+    let mut line = Vec::new();
+    let mut first = true;
+    let mut kept = std::collections::VecDeque::with_capacity(limit.min(1024));
+    loop {
+        line.clear();
+        let read = reader
+            .by_ref()
+            .take(MAX_LINE_BYTES as u64 + 1)
+            .read_until(b'\n', &mut line)
+            .map_err(DiagnosticsError::Source)?;
+        if read == 0 {
+            break;
+        }
+        let complete = line.last() == Some(&b'\n');
+        if !complete && line.len() > MAX_LINE_BYTES {
+            // 超长的行：丢掉它剩下的部分。
+            let mut rest = Vec::new();
+            reader
+                .read_until(b'\n', &mut rest)
+                .map_err(DiagnosticsError::Source)?;
+            if !(first && skip_partial) {
+                section.count.dropped += 1;
+            }
+            first = false;
+            continue;
+        }
+        // 从文件中间开始读时，第一行是不完整的半行。
+        if first && skip_partial {
+            first = false;
+            continue;
+        }
+        first = false;
+        let text = line.strip_suffix(b"\n").unwrap_or(&line);
+        let text = text.strip_suffix(b"\r").unwrap_or(text);
+        if text.iter().all(u8::is_ascii_whitespace) {
+            continue;
+        }
+        match accept(text) {
+            Some(record) => {
+                if kept.len() == limit {
+                    kept.pop_front();
+                    section.count.truncated += 1;
+                }
+                kept.push_back(record);
+            }
+            None => section.count.dropped += 1,
+        }
+    }
+    section.records = kept.into_iter().collect();
+    section.count.kept = section.records.len();
+    Ok(section)
+}
+
+fn parse_object(line: &[u8]) -> Option<Map<String, Value>> {
+    match serde_json::from_slice::<Value>(line).ok()? {
+        Value::Object(object) => Some(object),
+        _ => None,
+    }
+}
+
+fn event_kind(object: &Map<String, Value>) -> Option<&'static str> {
+    let kind = object.get("kind")?.as_str()?;
+    EVENT_KINDS.iter().copied().find(|known| *known == kind)
+}
+
+/// 输入事件：`t_ms`、`kind` 必有，`duration_ms` 可选，此外不许有任何键。
+pub fn input_event_record(line: &[u8]) -> Option<Value> {
+    let object = parse_object(line)?;
+    if object
+        .keys()
+        .any(|key| !matches!(key.as_str(), "t_ms" | "kind" | "duration_ms"))
+    {
         return None;
     }
-    let message = exception_type(message.lines().next()?);
+    let mut record = Map::new();
+    record.insert("t_ms".into(), object.get("t_ms")?.as_u64()?.into());
+    record.insert("kind".into(), event_kind(&object)?.into());
+    if let Some(duration) = object.get("duration_ms") {
+        record.insert("duration_ms".into(), duration.as_u64()?.into());
+    }
+    Some(Value::Object(record))
+}
+
+/// 性能记录：恰好 `t_ms`、`kind`、`duration_ms` 三个键。
+pub fn performance_record(line: &[u8]) -> Option<Value> {
+    let object = parse_object(line)?;
+    if object.len() != 3 || !object.contains_key("duration_ms") {
+        return None;
+    }
+    input_event_record(line)
+}
+
+/// 崩溃记录：恰好 `at`、`message`、`stack` 三个字符串键，长度不超过服务端上限。异常说明可能带着正在输入的文字（比如解析错误引用了组字内容），所以 `message` 只留异常类型，`stack` 里栈帧原样保留、说明行只留异常类型，路径都只留文件名。
+pub fn crash_record(line: &[u8]) -> Option<Value> {
+    let object = parse_object(line)?;
+    if object.len() != 3 {
+        return None;
+    }
+    let at = object.get("at")?.as_str()?;
+    let message = object.get("message")?.as_str()?;
+    let stack = object.get("stack")?.as_str()?;
+    if at.is_empty()
+        || at.len() > 64
+        || message.len() > MAX_CRASH_MESSAGE_BYTES
+        || stack.len() > MAX_CRASH_STACK_BYTES
+    {
+        return None;
+    }
+    sanitized_crash(at, message, stack)
+}
+
+/// 崩溃记录清洗后的样子：`message` 只留异常类型，`stack` 里栈帧原样保留、说明行只留异常类型，路径都只留文件名。
+fn sanitized_crash(at: &str, message: &str, stack: &str) -> Option<Value> {
+    let summary = message.lines().next()?;
+    if summary.trim().is_empty() {
+        return None;
+    }
+    let message = exception_type(summary);
     let stack: Vec<String> = stack
         .lines()
         .map(|line| {
@@ -352,7 +499,7 @@ fn sanitized_crash(at: &str, message: &str, stack: &str) -> Option<Value> {
         })
         .collect();
     let stack = stack.join("\n");
-    let stack = stack.chars().take(MAX_CRASH_STACK_BYTES).collect::<String>();
+    let stack: String = stack.chars().take(MAX_CRASH_STACK_BYTES).collect();
     let message: String = message.chars().take(MAX_CRASH_MESSAGE_BYTES).collect();
     let mut record = Map::new();
     record.insert("at".into(), at.into());
