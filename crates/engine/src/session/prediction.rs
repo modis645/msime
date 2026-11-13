@@ -39,7 +39,6 @@ impl Prediction {
     pub fn new(enabled: bool, min_word_chars: usize, path: PathBuf) -> Self {
         Self {
             enabled,
-            min_word_chars,
             allowed: true,
             pool: false,
             rows: Vec::new(),
