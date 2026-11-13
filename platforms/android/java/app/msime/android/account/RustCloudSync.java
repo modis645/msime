@@ -15,7 +15,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * 主进程经 Rust 的 {@code msime_client_cloud_sync} 跑自动云同步（#8201 迁移计划 5d）：设置（含自定义键盘皮肤库）、无编码常用语和个人词库的开关、节流、首次选择、三方合并、Retry-After 退避、词库快照的下载与激活排队、状态行的措辞都在 Rust 里。Java 只交出 Rust 读不到的本机值（按键反馈、Android 本地设置、皮肤库、还没认领的示例常用语），并在一轮回答 `pending_commit` 时先把 Rust 交回的值写进各自的存储、再提交。
+ * 主进程经 Rust 的 {@code msime_client_cloud_sync} 跑自动云同步（#8201 迁移计划 5d）：设置、无编码常用语和个人词库的开关、节流、首次选择、三方合并、Retry-After 退避、词库快照的下载与激活排队、状态行的措辞都在 Rust 里。Java 只交出 Rust 读不到的本机值（按键反馈、Android 本地设置、还没认领的示例常用语），并在一轮回答 `pending_commit` 时先把 Rust 交回的值写进各自的存储、再提交。
  *
  * <p>请求带 {@link AccountStore} 注册的 `session_store`：status、set_enabled、run 每次都按会话里的用户 id 对齐，所以只在持有登录的主进程里调（{@link AccountStore#id} 在 `:ime` 里会抛出）。`:ime` 看开关、记改动用 {@link SyncSignals}。
  *
@@ -162,11 +162,10 @@ public final class RustCloudSync {
         JSONObject inputs = new JSONObject()
             .put("feedback", feedback(context))
             .put("android_local", new JSONObject(AndroidLocalSettings.load(context).synced()))
-            .put("custom_keyboard_skins", CustomSkinLibrary.exportDesigns(Paths.get(preferencesDirectory)))
             .put("excluded_phrase_texts", new JSONArray(CommonPhrasesStore.untouchedStarters(context)));
         if (!settingsMigrated) inputs.put("settings_locked", true);
         JSONObject action = new JSONObject().put("trigger", trigger)
-            .put("capabilities", new JSONObject().put("settings", true).put("skins_library", true)
+            .put("capabilities", new JSONObject().put("settings", true)
                 .put("phrases", true).put("dictionary", true))
             .put("host_inputs", inputs);
         if (choice != null) action.put("choice", choice);
@@ -208,9 +207,6 @@ public final class RustCloudSync {
         }
         JSONObject local = writes.optJSONObject("android_local");
         if (local != null) AndroidLocalSettings.applySynced(context, scalars(local));
-        if (writes.opt("custom_keyboard_skins") instanceof String library) {
-            CustomSkinLibrary.importDesigns(Paths.get(preferencesDirectory), library);
-        }
         JSONArray adopt = writes.optJSONArray("adopt_texts");
         if (adopt != null) CommonPhrasesStore.adoptStarters(context, texts(adopt));
     }

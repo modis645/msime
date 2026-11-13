@@ -15,7 +15,6 @@ import android.content.Intent;
 import android.content.ClipboardManager;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import app.msime.android.CustomSkinLibrary;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Canvas;
@@ -378,8 +377,6 @@ public final class MSIMEInputService extends InputMethodService {
     private boolean voiceInputEnabled = true;
     private String voiceLanguage = "zh-CN";
     KeyboardSkin skin = KeyboardSkin.system(false);
-    private java.util.List<CustomSkinLibrary.Item> modeSkinLibrary = java.util.List.of();
-    private int modeSkinLibraryGeneration;
     /** 表情面板有自己的明暗设置，跟随时才继承键盘皮肤解析出的明暗。 */
     KeyboardSkin emojiSkin = KeyboardSkin.system(false);
     KeyboardSkin handwritingSkin = KeyboardSkin.system(false);
@@ -4017,7 +4014,6 @@ public final class MSIMEInputService extends InputMethodService {
         preferencesSnapshot = accepted;
         // 「增强」开着而逐键重排模型没装（多半是缺省或同步来的「增强」，用户从没在设置里选过）：排一个只在不按流量计费的网络上跑的后台下载，由主进程去下；每个进程只排一次，这里不联网。
         RerankModelDownload.scheduleIfWanted(this, preferences, installedResourcePackIds);
-        refreshModeSkinLibrary(preferences);
         imeTextEditPanel.applyPreferences(preferences);
         if (!clipboardHistoryEnabled && clipboardHistory != null) {
             clipboardHistory.clearQuietly();
@@ -7319,58 +7315,10 @@ public final class MSIMEInputService extends InputMethodService {
         JSONObject customTheme = preferences == null ? null
             : preferences.optJSONObject("custom_theme");
         app.msime.android.KeyboardSkinModeChoice.Selected selected =
-            app.msime.android.KeyboardSkinModeChoice.selected(preferences, dark, modeSkinLibrary);
-        if (selected.libraryId() != null) {
-            try {
-                customTheme = customTheme == null ? new JSONObject() : new JSONObject(customTheme.toString());
-                customTheme.put("keyboard", selected.design());
-            }
-            catch (JSONException error) { return KeyboardSkin.system(dark); }
-        }
+            app.msime.android.KeyboardSkinModeChoice.selected(preferences, dark);
         return themeSkin(KeyboardSkin.effectiveTheme(themeCatalog(), selected.theme(), dark), customTheme, dark);
     }
 
-    /** 在偏好工作线程读取设计库；读取失败时槽位引用自然回退旧主题。 */
-    private void refreshModeSkinLibrary(JSONObject preferences) {
-        int generation = ++modeSkinLibraryGeneration;
-        if (!preferences.optString("android_keyboard_skin_light", "").startsWith("design:")
-                && !preferences.optString("android_keyboard_skin_dark", "").startsWith("design:")) {
-            modeSkinLibrary = java.util.List.of();
-            return;
-        }
-        String directory = preferencesDirectory;
-        if (directory.isEmpty()) return;
-        preferencesWorker.execute(() -> {
-            java.util.List<CustomSkinLibrary.Item> loaded = java.util.List.of();
-            try { loaded = CustomSkinLibrary.read(java.nio.file.Paths.get(directory)); }
-            catch (java.io.IOException | RuntimeException error) {
-                android.util.Log.w("MSIMESkin", "Mode skin library unreadable", error);
-            }
-            java.util.List<CustomSkinLibrary.Item> result = loaded;
-            main.post(() -> {
-                if (generation != modeSkinLibraryGeneration) return;
-                modeSkinLibrary = result;
-                JSONObject current = preferencesSnapshot == null ? null : preferencesSnapshot.optJSONObject("preferences");
-                if (current == null) return;
-                // 候选条、表情和手写也按槽位取皮肤：槽位是我的设计时，库读完前它们和键盘一样先用旧主题，这里要一起换上，否则冷启动后候选条一直停在旧主题上，直到下一次偏好变化。
-                String previousSkin = skin.displayKey(imeStyler.appThemeSeed());
-                String previousEmojiSkin = emojiSkin.displayKey(imeStyler.appThemeSeed());
-                String previousHandwritingSkin = handwritingSkin.displayKey(imeStyler.appThemeSeed());
-                String previousAppearance = candidateAppearance.key();
-                skin = keyboardSkin(current);
-                emojiSkin = surfaceSkin(current, "emoji_theme");
-                handwritingSkin = surfaceSkin(current, "handwriting_theme");
-                candidateAppearance = candidateAppearanceFor(current);
-                if (!previousSkin.equals(skin.displayKey(imeStyler.appThemeSeed()))
-                        || !previousEmojiSkin.equals(emojiSkin.displayKey(imeStyler.appThemeSeed()))
-                        || !previousHandwritingSkin.equals(handwritingSkin.displayKey(imeStyler.appThemeSeed()))
-                        || !previousAppearance.equals(candidateAppearance.key())) {
-                    imeStyler.applySkin();
-                    render();
-                }
-            });
-        });
-    }
 
     /**
      * One global theme's keyboard in one host mode, through `msime_client_resolve_theme` (see {@link KeyboardSkin#themeRequest}). Anything the resolver refuses draws the Material 3 keyboard rather than a stale theme.
@@ -7895,7 +7843,7 @@ public final class MSIMEInputService extends InputMethodService {
     }
 
     /** 键盘皮肤面板只保存当前明暗的键盘选择短引用；另一种明暗的选择不变。候选条、表情和手写也按这一明暗的选择取皮肤（见 {@link #surfaceSkin}），候选皮肤包槽位不变。 */
-    void saveKeyboardSkin(String identifier, JSONObject design, String libraryId) {
+    void saveKeyboardSkin(String identifier) {
         if (skinSaving || traditionalOutputSaving || session == 0
                 || preferencesSnapshot == null || preferencesDirectory.isEmpty()) return;
         final long targetSession = session;
@@ -7903,7 +7851,6 @@ public final class MSIMEInputService extends InputMethodService {
         final JSONObject pending;
         final long expectedRevision;
         final JSONObject preferences;
-        String designAnimation = null;
         try {
             pending = new JSONObject(preferencesSnapshot.toString());
             expectedRevision = PreferencesRevisionPolicy.read(pending.opt("revision"), -1);
@@ -7913,30 +7860,14 @@ public final class MSIMEInputService extends InputMethodService {
                 InputViewValuePolicy.textOr(preferences, "screen_keyboard_theme", "follow"),
                 InputViewValuePolicy.textOr(preferences, "theme", "system"), systemDark());
             String key = app.msime.android.KeyboardSkinModeChoice.key(dark);
-            String choice = design == null ? app.msime.android.KeyboardSkinModeChoice.theme(identifier)
-                : app.msime.android.KeyboardSkinModeChoice.design(libraryId);
+            String choice = app.msime.android.KeyboardSkinModeChoice.theme(identifier);
             if (choice.equals(preferences.optString(key))) return;
             preferences.put(key, choice);
-            if (design != null) {
-                applyDesignFeedback(preferences, design);
-                designAnimation = CustomKeyboardSkin.from(design).pressAnimation();
-            }
         } catch (JSONException error) {
             showKeyboardSkinStatus("皮肤切换失败，保留当前皮肤");
             return;
         }
-        skin = design == null ? keyboardSkin(preferences) : KeyboardSkin.custom(design,
-            KeyboardSkin.resolveDark(InputViewValuePolicy.textOr(preferences, "screen_keyboard_theme", "follow"),
-                InputViewValuePolicy.textOr(preferences, "theme", "system"), systemDark()));
-        // 让还没返回的设计库读取作废：它的回调按保存前的 preferencesSnapshot 重算四块面板，不论这次换的是库里已有的设计、内置主题还是刚装的设计，都会在保存往返期间把它们一起退回旧皮肤（#10749）。写入成功后 applyPreferencesSnapshot 会重读设计库；写入失败时 finishKeyboardSkinSave 按已接受的偏好重读。
-        ++modeSkinLibraryGeneration;
-        // 候选条、表情和手写经 surfaceSkin 按设计库解析 `design:` 槽位。原槽位是内置主题时库是空的，刚从社区装进来的设计也还不在库里；不先补上，保存往返期间键盘已是新设计，候选条却回退到旧主题（#10749）。写入成功后重读的设计库会替换掉这份临时副本；写入失败时槽位回到原值，多出的这一项没人引用。
-        if (design != null && libraryId != null
-                && modeSkinLibrary.stream().noneMatch(item -> libraryId.equals(item.id()))) {
-            java.util.List<CustomSkinLibrary.Item> library = new java.util.ArrayList<>(modeSkinLibrary);
-            library.add(new CustomSkinLibrary.Item(libraryId, libraryId, design));
-            modeSkinLibrary = java.util.List.copyOf(library);
-        }
+        skin = keyboardSkin(preferences);
         emojiSkin = surfaceSkin(preferences, "emoji_theme");
         handwritingSkin = surfaceSkin(preferences, "handwriting_theme");
         candidateAppearance = candidateAppearanceFor(preferences);
@@ -7946,8 +7877,8 @@ public final class MSIMEInputService extends InputMethodService {
         imeStyler.applySkin();
         render();
         try {
-            final String animation = designAnimation == null ? null
-                : (String) AndroidLocalSettings.spec(AndroidLocalSettings.KEY_ANIMATION).accept(designAnimation);
+            // 键盘皮肤只剩内置主题，按键动画不再跟着设计改。
+            final String animation = null;
             preferencesWorker.execute(() -> {
                 String response;
                 try {
@@ -8021,8 +7952,7 @@ public final class MSIMEInputService extends InputMethodService {
             handwritingSkin = surfaceSkin(accepted, "handwriting_theme");
             candidateAppearance = candidateAppearanceFor(accepted);
             // 保存时作废过还没返回的设计库读取，失败后按已接受的偏好重读一次，读完回调会再按库重算四块面板。
-            if (accepted != null) refreshModeSkinLibrary(accepted);
-            showKeyboardSkinStatus("皮肤切换失败，已恢复原皮肤");
+                showKeyboardSkinStatus("皮肤切换失败，已恢复原皮肤");
         }
         imeStyler.applySkin();
         render();

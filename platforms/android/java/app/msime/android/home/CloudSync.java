@@ -6,7 +6,6 @@ import android.util.Log;
 import app.msime.android.AccountStore;
 import app.msime.android.AndroidLocalSettings;
 import app.msime.android.CloudSyncChoicePolicy;
-import app.msime.android.CustomSkinLibrary;
 import app.msime.android.DictionarySnapshotQueue;
 import app.msime.android.DigestPolicy;
 import app.msime.android.JsonPolicy;
@@ -124,7 +123,7 @@ public final class CloudSync {
 
     // ---- 设置文档（云同步和本地备份共用） ----
 
-    /** 把一份设置文档（`{revision, settings}`）应用到本机：偏好由 client-core 按修订号保存，按键反馈、皮肤库和 Android 本地设置由这里写回各自的存储。`schema` 是服务端的字段表；本地备份恢复时是按备份里的值声明的字段表（{@link LocalBackup}）。 */
+    /** 把一份设置文档（`{revision, settings}`）应用到本机：偏好由 client-core 按修订号保存，按键反馈和 Android 本地设置由这里写回各自的存储。`schema` 是服务端的字段表；本地备份恢复时是按备份里的值声明的字段表（{@link LocalBackup}）。 */
     static void applySettings(Context context, String directory, JSONObject document, JSONObject schema)
             throws IOException, JSONException {
         JSONObject request = new JSONObject()
@@ -138,9 +137,6 @@ public final class CloudSync {
             KeyboardFeedbackStore.save(context, KeyboardFeedbackStore.fromValues(
                 applied.opt("soundEnabled"), applied.opt("hapticsEnabled"),
                 applied.opt("hapticStrength")));
-        }
-        if (value.opt("custom_keyboard_skins") instanceof String library) {
-            CustomSkinLibrary.importDesigns(Paths.get(directory), library);
         }
         JSONObject local = value.optJSONObject("android_local");
         if (local != null) AndroidLocalSettings.applySynced(context, map(local));

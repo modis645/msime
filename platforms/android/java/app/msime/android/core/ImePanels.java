@@ -566,7 +566,6 @@ final class ImePanels {
 
     /** 皮肤面板正在应用、尚未写回偏好的那一款；保存回来之前选中态按它画，点下去就换色。 */
     private String pendingSkinKey;
-    private int skinRenderGeneration;
 
     void renderSkinPicker() {
         if (s.skinPanel == null) return;
@@ -575,35 +574,14 @@ final class ImePanels {
         boolean hostDark = KeyboardSkin.resolveDark(
             InputViewValuePolicy.textOr(preferences, "screen_keyboard_theme", "follow"),
             InputViewValuePolicy.textOr(preferences, "theme", "system"), s.systemDark());
-        JSONArray themes = s.themeCatalog();
-        int generation = ++skinRenderGeneration;
-        renderSkinPickerLoaded(preferences, hostDark, themes, java.util.List.of(), java.util.List.of());
-        String directory = s.preferencesDirectory;
-        s.preferencesWorker.execute(() -> {
-            java.util.List<CustomSkinLibrary.Item> library = java.util.List.of();
-            java.util.List<CommunitySkinCache.Entry> community = java.util.List.of();
-            if (!directory.isEmpty()) {
-                java.nio.file.Path root = java.nio.file.Paths.get(directory);
-                try { library = CustomSkinLibrary.read(root); }
-                catch (Exception ignored) { }
-                community = CommunitySkinCache.read(root);
-            }
-            java.util.List<CustomSkinLibrary.Item> loadedLibrary = library;
-            java.util.List<CommunitySkinCache.Entry> loadedCommunity = community;
-            s.main.post(() -> {
-                if (generation != skinRenderGeneration || s.skinPanel == null) return;
-                renderSkinPickerLoaded(preferences, hostDark, themes, loadedLibrary, loadedCommunity);
-            });
-        });
+        renderSkinPickerLoaded(preferences, hostDark, s.themeCatalog());
     }
 
-    private void renderSkinPickerLoaded(JSONObject preferences, boolean hostDark, JSONArray themes,
-            java.util.List<CustomSkinLibrary.Item> libraryItems,
-            java.util.List<CommunitySkinCache.Entry> communityItems) {
+    private void renderSkinPickerLoaded(JSONObject preferences, boolean hostDark, JSONArray themes) {
         if (s.skinPanel == null) return;
         s.skinPanel.removeAllViews();
         LayoutPolicy.setPaddingDp(s.skinPanel, s, 8, 10, 8, 6);
-        // 目录里的全局主题按共享目录的顺序（含水杉四季与春夏秋冬），后面接「我的设计」。
+        // 目录里的全局主题按共享目录的顺序（含水杉四季与春夏秋冬）。
         JSONObject customTheme = preferences == null ? null : preferences.optJSONObject("custom_theme");
         java.util.List<MSIMEInputService.SkinChoice> choices =
             new java.util.ArrayList<>(themes.length());
@@ -623,32 +601,9 @@ final class ImePanels {
             KeyboardSkin system = KeyboardSkin.system(hostDark);
             choices.add(new MSIMEInputService.SkinChoice(system.id(), system.title(), system, null, null));
         }
-        // 已获取的设计与社区目录缓存里的设计，按皮肤的绘制键去重；「我的皮肤」与其中某一款相同时只留带名字的那一格。
-        java.util.Set<String> libraryIds = new java.util.HashSet<>();
-        java.util.Set<String> namedKeys = new java.util.HashSet<>();
-        for (CustomSkinLibrary.Item item : libraryItems) {
-            JSONObject design = item.design();
-            KeyboardSkin skin = KeyboardSkin.custom(design, hostDark);
-            libraryIds.add(item.id());
-            namedKeys.add(skin.key());
-            choices.add(new MSIMEInputService.SkinChoice("custom", item.name(), skin, design, item.id()));
-        }
-        // 社区里还没获取的皮肤：目录由 App 缓存（键盘不为浏览目录联网），选中时先存进皮肤库再换上。
-        java.util.Map<MSIMEInputService.SkinChoice, CommunitySkinCache.Entry> uninstalled = new java.util.HashMap<>();
-        for (CommunitySkinCache.Entry entry : communityItems) {
-            if (libraryIds.contains(entry.id())) continue;
-            KeyboardSkin skin = KeyboardSkin.custom(entry.design(), hostDark);
-            if (!namedKeys.add(skin.key())) continue;
-            MSIMEInputService.SkinChoice choice = new MSIMEInputService.SkinChoice("custom", entry.name(), skin, entry.design(), entry.id());
-            uninstalled.put(choice, entry);
-            choices.add(choice);
-        }
-        choices.removeIf(choice -> "custom".equals(choice.id()) && choice.design() == null
-            && namedKeys.contains(choice.skin().key()));
         // 所选主题属于另一种明暗时键盘按跟随系统画，选中态也落在跟随系统上。
-        app.msime.android.KeyboardSkinModeChoice.Selected selectedChoice =
-            app.msime.android.KeyboardSkinModeChoice.selected(preferences, hostDark, libraryItems);
-        String globalTheme = KeyboardSkin.effectiveTheme(themes, selectedChoice.theme(), hostDark);
+        String globalTheme = KeyboardSkin.effectiveTheme(themes,
+            app.msime.android.KeyboardSkinModeChoice.selected(preferences, hostDark).theme(), hostDark);
         PagedTileGrid grid = new PagedTileGrid(s);
         grid.setGrid(4, 2);
         // 行高容下按 390:292 的迷你键盘（约 86 dp 宽时 65 dp 高）、描边和下方的名字；行距、列距取设计的 6 / 10。
@@ -661,10 +616,7 @@ final class ImePanels {
             KeyboardSkinCard card = new KeyboardSkinCard(s, choice.skin(), choice.title());
             String key = choiceKey(choice);
             boolean selected = pendingSkinKey != null ? pendingSkinKey.equals(key)
-                : choice.design() == null ? choice.id().equals(globalTheme)
-                : "custom".equals(globalTheme) && (selectedChoice.libraryId() != null
-                    ? selectedChoice.libraryId().equals(choice.libraryId())
-                    : s.skin.key().equals(choice.skin().key()));
+                : choice.id().equals(globalTheme);
             ViewPolicy.setSelected(card, selected);
             if (selected) selectedIndex = index;
             if ("system".equals(choice.id())) {
@@ -680,26 +632,9 @@ final class ImePanels {
                     ViewPolicy.setSelected(other, other == card);
                     if (Build.VERSION.SDK_INT >= 30) other.setStateDescription(other == card ? "已选中" : "未选中");
                 }
-                // 选中即换色并收起面板回到键盘，换上的皮肤直接在键盘上看。还没获取的社区皮肤先在同一个偏好线程上存进皮肤库，排在保存选择之前。
-                CommunitySkinCache.Entry install = uninstalled.get(choice);
-                if (install != null) {
-                    final String directory = s.preferencesDirectory;
-                    s.preferencesWorker.execute(() -> {
-                        boolean saved = false;
-                        try {
-                            saved = CustomSkinLibrary.add(java.nio.file.Paths.get(directory),
-                                install.id(), install.name(), install.design());
-                        } catch (java.io.IOException | RuntimeException error) {
-                            android.util.Log.w("MSIMESkin", "Community skin was not saved to the library", error);
-                        }
-                        boolean installed = saved;
-                        s.main.post(() -> {
-                            if (installed) s.saveKeyboardSkin(choice.id(), choice.design(), choice.libraryId());
-                            else s.notice("皮肤保存失败，保留当前皮肤");
-                        });
-                    });
-                } else s.saveKeyboardSkin(choice.id(), choice.design(), choice.libraryId());
-                s.recordSkinStatistics(choice.design() == null ? choice.id() : "custom");
+                // 选中即换色并收起面板回到键盘，换上的皮肤直接在键盘上看。
+                s.saveKeyboardSkin(choice.id());
+                s.recordSkinStatistics(choice.id());
                 styleSkinPicker(cards);
                 s.closeSkinPicker();
                 s.render();
@@ -713,7 +648,7 @@ final class ImePanels {
     }
 
     private static String choiceKey(MSIMEInputService.SkinChoice choice) {
-        return choice.design() == null ? "theme:" + choice.id() : "design:" + choice.design().toString().hashCode();
+        return "theme:" + choice.id();
     }
 
     /** 皮肤保存回来（成功或失败）后清掉临时选中态，下次按偏好画。 */

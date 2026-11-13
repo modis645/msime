@@ -10,7 +10,6 @@ import app.msime.android.AppEdition;
 import app.msime.android.BackupDestinationWriter;
 import app.msime.android.BoundsPolicy;
 import app.msime.android.CommonPhrasesStore;
-import app.msime.android.CustomSkinLibrary;
 import app.msime.android.DictionaryCollectionsStore;
 import app.msime.android.DictionarySnapshotQueue;
 import app.msime.android.DictionarySnapshotWords;
@@ -71,8 +70,6 @@ final class LocalBackup {
     /** 应用缓存下的工作目录：导出时先在这里拼好整个包再写到用户选的位置，恢复时先把选中的文件复制到这里。 */
     private static final String WORK = "backup";
     private static final int COPY_BUFFER = 64 * 1024;
-    /** 设置文档里自定义皮肤库那个键；皮肤另存成 skins 一项，设置那一项不带它。 */
-    private static final String SKINS_KEY = "platform.android.custom_keyboard_skins";
     /** 导出页和导出结果里都要说的话：输入记录能看出打字习惯，备份文件没有加密。 */
     static final String PRIVACY_NOTICE = "备份文件里有你的输入记录，能看出你常打的字词和打字习惯。文件没有加密，请妥善保管，不要发给别人或传到公开的地方。";
 
@@ -129,12 +126,10 @@ final class LocalBackup {
                 new JSONObject().put("preferences_directory", directory)
                     .put("feedback", CloudSync.hostFeedback(context)).toString()))
                 .getJSONObject("settings");
-            settings.remove(SKINS_KEY);
             JSONObject local = new JSONObject();
             for (Map.Entry<String, Object> entry : AndroidLocalSettings.load(context).explicit().entrySet()) {
                 if (LocalBackupPolicy.backsUpLocalSetting(entry.getKey())) local.put(entry.getKey(), entry.getValue());
             }
-            String skins = CustomSkinLibrary.exportDesigns(Paths.get(directory));
             JSONObject phraseNotes = new JSONObject();
             JSONObject phraseOrganization = new JSONObject();
             List<String> phrases = ownPhrases(context, phraseNotes, phraseOrganization);
@@ -147,11 +142,9 @@ final class LocalBackup {
             Integer habits = exportHabits(context, habitsFile);
             // 输入习惯读不出来时同样不让整份备份失败，只是包里没有这一项。
             if (habits == null) learningMissing = true;
-            int skinCount = new JSONArray(skins).length();
             Map<String, byte[]> texts = new LinkedHashMap<>();
             texts.put(LocalBackupPolicy.SETTINGS, TextPolicy.utf8Bytes(new JSONObject().put("settings", settings).toString()));
             texts.put(LocalBackupPolicy.ANDROID_LOCAL, TextPolicy.utf8Bytes(local.toString()));
-            texts.put(LocalBackupPolicy.SKINS, TextPolicy.utf8Bytes(skins));
             texts.put(LocalBackupPolicy.PHRASES,
                 TextPolicy.utf8Bytes(new JSONObject().put("phrases", new JSONArray(phrases))
                     .put("notes", phraseNotes).put("organization", phraseOrganization).toString()));
@@ -466,26 +459,23 @@ final class LocalBackup {
     }
 
     /**
-     * 恢复前本机的设置、按键反馈、Android 本地设置和皮肤库，以及恢复过程中新加的常用语：恢复设置、皮肤或常用语时任何一部分失败，就用它把这几样换回恢复前的样子。
+     * 恢复前本机的设置、按键反馈和 Android 本地设置，以及恢复过程中新加的常用语：恢复设置、皮肤或常用语时任何一部分失败，就用它把这几样换回恢复前的样子。
      *
-     * <p>设置不按文件换回，而是把本机自己导出的设置文档（与云同步上传、本地备份导出的是同一份）按同样的方式再应用一次：偏好文件由 client-core 按修订号比较并交换写入，键盘进程同时在读写，直接把旧文件拷回去会让修订号倒退。Android 本地设置按键比对，只把变了的键改回原值（原来没写过的键删掉，回到默认值）。皮肤库整份写回（{@link CustomSkinLibrary#replaceAll}），常用语删掉这次新加的那几条。
+     * <p>设置不按文件换回，而是把本机自己导出的设置文档（与云同步上传、本地备份导出的是同一份）按同样的方式再应用一次：偏好文件由 client-core 按修订号比较并交换写入，键盘进程同时在读写，直接把旧文件拷回去会让修订号倒退。Android 本地设置按键比对，只把变了的键改回原值（原来没写过的键删掉，回到默认值）。常用语删掉这次新加的那几条。
      */
     private static final class Undo {
         final JSONObject settings;
         final KeyboardFeedbackStore.Settings feedback;
         final Map<String, Object> local;
-        final List<CustomSkinLibrary.Item> skins;
         /** 这次恢复新加的常用语的 id，撤销时删掉。 */
         final List<String> addedPhrases = new ArrayList<>();
         /** 本机已经有的那几条正文；全部成功后才认领其中的预置示例（{@link #adoptPresentStarters}），失败时不用撤销认领。 */
         final List<String> presentPhrases = new ArrayList<>();
 
-        private Undo(JSONObject settings, KeyboardFeedbackStore.Settings feedback, Map<String, Object> local,
-                List<CustomSkinLibrary.Item> skins) {
+        private Undo(JSONObject settings, KeyboardFeedbackStore.Settings feedback, Map<String, Object> local) {
             this.settings = settings;
             this.feedback = feedback;
             this.local = local;
-            this.skins = skins;
         }
 
         static Undo capture(Context context, String directory) throws IOException, JSONException {
@@ -496,23 +486,15 @@ final class LocalBackup {
                 new JSONObject().put("preferences_directory", directory)
                     .put("feedback", CloudSync.hostFeedback(context)).toString()))
                 .getJSONObject("settings");
-            settings.remove(SKINS_KEY);
             return new Undo(settings, KeyboardFeedbackStore.load(context),
-                new LinkedHashMap<>(AndroidLocalSettings.load(context).explicit()),
-                CustomSkinLibrary.read(Paths.get(directory)));
+                new LinkedHashMap<>(AndroidLocalSettings.load(context).explicit()));
         }
 
-        /** 把设置、按键反馈、本地设置、皮肤和常用语换回恢复前；每一样都试，全部成功时返回 true。 */
+        /** 把设置、按键反馈、本地设置和常用语换回恢复前；每一样都试，全部成功时返回 true。 */
         boolean apply(Context context, String directory) {
             boolean undone = true;
             for (String id : addedPhrases) {
                 if (!CommonPhrasesStore.remove(context, id).ok()) undone = false;
-            }
-            try {
-                CustomSkinLibrary.replaceAll(Paths.get(directory), skins);
-            } catch (IOException | RuntimeException error) {
-                Log.w(TAG, "skin undo failed", error);
-                undone = false;
             }
             try {
                 if (settings.length() > 0) applySettingsDocument(context, directory, settings);
@@ -602,13 +584,6 @@ final class LocalBackup {
             }
         }
         return applied;
-    }
-
-    /** 并入皮肤，返回新增或更新的个数；写入失败时抛出，由调用方撤销。 */
-    private static int restoreSkins(String directory, ZipFile zip) throws IOException {
-        byte[] bytes = entryBytes(zip, LocalBackupPolicy.SKINS, LocalBackupPolicy.MAX_SKINS_BYTES);
-        if (bytes == null) return 0;
-        return CustomSkinLibrary.importDesigns(Paths.get(directory), TextPolicy.utf8(bytes));
     }
 
     /**

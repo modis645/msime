@@ -6,7 +6,6 @@ import app.msime.android.AppThemePalette;
 import app.msime.android.JsonPolicy;
 import app.msime.android.KeyboardSkin;
 import app.msime.android.KeyboardSkinModeChoice;
-import app.msime.android.CustomSkinLibrary;
 import app.msime.android.NativeClient;
 import app.msime.android.PreferencesRevisionPolicy;
 import app.msime.android.SyncSignals;
@@ -132,29 +131,16 @@ public final class HostStore {
         return value(call(NativeClient::textTrackpadOptions));
     }
 
-    /** 按当前键盘明暗解析皮肤；传入的设计库用于找到专用槽位的设计，缺项时回退旧主题。 */
+    /** 按当前键盘明暗解析皮肤；缺项时回退旧主题。 */
     public static KeyboardSkin keyboardSkin(JSONObject preferences, boolean systemDark) {
-        return keyboardSkin(preferences, systemDark, List.of());
-    }
-
-    public static KeyboardSkin keyboardSkin(JSONObject preferences, boolean systemDark,
-            List<CustomSkinLibrary.Item> library) {
         boolean dark = KeyboardSkin.resolveDark(
             InputViewValuePolicy.textOr(preferences, "screen_keyboard_theme", "follow"),
             InputViewValuePolicy.textOr(preferences, "theme", "system"), systemDark);
-        KeyboardSkinModeChoice.Selected selected = KeyboardSkinModeChoice.selected(preferences, dark, library);
-        String globalTheme = KeyboardSkin.effectiveTheme(themeCatalog(),
-            selected.theme(), dark);
+        KeyboardSkinModeChoice.Selected selected = KeyboardSkinModeChoice.selected(preferences, dark);
+        String globalTheme = KeyboardSkin.effectiveTheme(themeCatalog(), selected.theme(), dark);
         JSONObject customTheme = preferences.optJSONObject("custom_theme");
-        if (selected.libraryId() != null) {
-            try {
-                customTheme = customTheme == null ? new JSONObject() : new JSONObject(customTheme.toString());
-                customTheme.put("keyboard", selected.design());
-            } catch (JSONException error) { return KeyboardSkin.system(dark); }
-        }
-        JSONObject requestTheme = customTheme;
         JSONObject theme = value(call(() -> NativeClient.resolveTheme(
-            KeyboardSkin.themeRequest(globalTheme, requestTheme, dark))));
+            KeyboardSkin.themeRequest(globalTheme, customTheme, dark))));
         if (theme == null) return KeyboardSkin.system(dark);
         return KeyboardSkin.resolved(theme, KeyboardSkin.themeTitle(themeCatalog(), globalTheme),
             dark, customTheme == null ? null : customTheme.optJSONObject("keyboard"));
@@ -169,36 +155,20 @@ public final class HostStore {
      */
     public static KeyboardSkin keyboardSkin(JSONObject preferences, boolean systemDark,
             AppThemePalette.Seed seed) {
-        return keyboardSkin(preferences, systemDark, seed, List.of());
-    }
-
-    public static KeyboardSkin keyboardSkin(JSONObject preferences, boolean systemDark,
-            AppThemePalette.Seed seed, List<CustomSkinLibrary.Item> library) {
         boolean dark = KeyboardSkin.resolveDark(
             InputViewValuePolicy.textOr(preferences, "screen_keyboard_theme", "follow"),
             InputViewValuePolicy.textOr(preferences, "theme", "system"), systemDark);
         // 所选主题属于另一种明暗时键盘按跟随系统画，这里也要走跟随系统的种子配色。
         if (!"system".equals(KeyboardSkin.effectiveTheme(themeCatalog(),
-                KeyboardSkinModeChoice.selected(preferences, dark, library).theme(), dark)))
-            return keyboardSkin(preferences, systemDark, library);
+                KeyboardSkinModeChoice.selected(preferences, dark).theme(), dark)))
+            return keyboardSkin(preferences, systemDark);
         return KeyboardSkin.system(dark, seed);
     }
 
-    /** 设置页工作线程读取本机设计库后解析当前键盘皮肤；库失效时沿用旧主题。 */
+    /** 设置页解析当前键盘皮肤。 */
     public static KeyboardSkin keyboardSkin(Context context, JSONObject preferences, boolean systemDark,
             AppThemePalette.Seed seed) {
-        boolean dark = KeyboardSkin.resolveDark(
-            InputViewValuePolicy.textOr(preferences, "screen_keyboard_theme", "follow"),
-            InputViewValuePolicy.textOr(preferences, "theme", "system"), systemDark);
-        if (!preferences.optString(KeyboardSkinModeChoice.key(dark), "").startsWith("design:"))
-            return keyboardSkin(preferences, systemDark, seed);
-        List<CustomSkinLibrary.Item> library = List.of();
-        String directory = directory(context);
-        if (!directory.isEmpty()) try { library = CustomSkinLibrary.read(Paths.get(directory)); }
-        catch (java.io.IOException | RuntimeException error) {
-            android.util.Log.w("MSIMESettings", "Custom skin library unreadable", error);
-        }
-        return keyboardSkin(preferences, systemDark, seed, library);
+        return keyboardSkin(preferences, systemDark, seed);
     }
 
     /**

@@ -18,7 +18,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import app.msime.android.CommunityCatalog;
 import app.msime.android.CommunityRequest;
-import app.msime.android.CustomSkinLibrary;
 import app.msime.android.DictionaryCollectionsStore;
 import app.msime.android.R;
 import app.msime.android.SyncSignals;
@@ -318,7 +317,7 @@ public final class CommunityFragment extends Fragment {
     }
 
     /**
-     * 读出本机已经拿到的作品，让卡片上的按钮显示「使用」或「已添加」：皮肤库里的设计、装成命名词库的社区词库、装进常用语的短语包。
+     * 读出本机已经拿到的作品，让卡片上的按钮显示「使用」或「已添加」：装成命名词库的社区词库、装进常用语的短语包。
      */
     private void refreshTaken() {
         HostTask.run(this, CommunityFragment::taken, values -> {
@@ -327,24 +326,11 @@ public final class CommunityFragment extends Fragment {
     }
 
     private static Map<String, CommunityAdapter.Action> taken(Context context) {
-        List<CustomSkinLibrary.Item> skins = List.of();
-        String directory = HostStore.directory(context);
-        if (!directory.isEmpty()) {
-            try {
-                skins = CustomSkinLibrary.read(Paths.get(directory));
-            } catch (java.io.IOException | RuntimeException error) {
-                android.util.Log.i("MSIMECommunity", "Custom skin library unreadable", error);
-            }
-        }
         DictionaryCollectionsStore.Result<DictionaryCollectionsStore.View> collections =
             DictionaryCollectionsStore.load(context);
         List<DictionaryCollectionsStore.Collection> collectionItems = collections.ok()
             ? collections.value().collections() : List.of();
-        Map<String, CommunityAdapter.Action> values = new HashMap<>(
-            skins.size() + collectionItems.size());
-        for (CustomSkinLibrary.Item skin : skins) {
-            values.put(CommunityAdapter.key(skin.id()), CommunityAdapter.Action.DONE);
-        }
+        Map<String, CommunityAdapter.Action> values = new HashMap<>(collectionItems.size());
         for (DictionaryCollectionsStore.Collection collection : collectionItems) {
             if ("community".equals(collection.sourceType()) && collection.resourceId() != null
                     && !collection.resourceId().isEmpty()) {

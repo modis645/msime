@@ -407,20 +407,8 @@ public final class CommunityCatalog {
         return Double.isFinite(result) ? result : null;
     }
 
-    /**
-     * 「获取」的第二步：把 {@link #download} 拿到的设计存进键盘皮肤面板读的那个库（Java 的 {@link CustomSkinLibrary}，键盘进程经它的锁文件读写同一份）。只存库、不换上，「使用」是另一个按钮。
-     *
-     * @return the failure to show, or an empty string on success
-     */
+    /** 皮肤库已经下线，皮肤只保留社区里的浏览与预览。 */
     public static String install(java.nio.file.Path preferencesDirectory, Item item, JSONObject design) {
-        if (item == null || item.kind() != CommunityRequest.Kind.SKIN || design == null) {
-            return "这类作品还不能从这里保存。";
-        }
-        try {
-            return CustomSkinLibrary.add(preferencesDirectory, item.id(), item.name(), design)
-                ? "" : "皮肤库已满，请先在键盘里删掉一些。";
-        } catch (java.io.IOException | RuntimeException error) {
-            return "保存失败，请稍后重试。";
-        }
+        return "这类作品还不能从这里保存。";
     }
 }
