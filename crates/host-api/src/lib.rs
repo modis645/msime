@@ -2398,6 +2398,8 @@ impl HostOptions {
             learning: self.preferences.learning,
             learn_english_on_enter: self.preferences.enter_learns_english_word,
             next_word_prediction: next_word_prediction_applies(&self.preferences),
+            // 产品层只要两字及以上的词带续写；与 `HostOptions` 那条赋值保持同一口径。
+            prediction_min_word_chars: Some(2),
             autocorrect_transposition: self.preferences.quanpin.autocorrect_transposition,
             autocorrect_neighbor: self.preferences.quanpin.autocorrect_neighbor,
             fuzzy_pinyin_rules: self.preferences.fuzzy_pinyin.active_rules(),
