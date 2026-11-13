@@ -121,6 +121,7 @@ impl Session {
             grid_helpcode: options.grid_helpcode,
             prediction: prediction::Prediction::new(
                 options.next_word_prediction,
+                options.prediction_min_word_chars,
                 options.paths.dictionary(crate::assets::MAIN_DICTIONARY),
             ),
             revision: 0,
@@ -1200,8 +1201,9 @@ impl Session {
         if result.commit.as_deref() != Some(selected.word.as_str()) {
             return;
         }
-        // 联想门槛：单字上屏不带续写，只有提交了两字及以上的词才提示，免得每打一个字都跳一排联想。
-        if selected.word.chars().count() < 2 {
+        // 联想门槛：上屏的词至少 `prediction_min_word_chars` 个字才带续写。引擎默认 1（与上游一致，单字也联想），
+        // 产品层设 2，免得每打一个字都跳一排联想。
+        if selected.word.chars().count() < self.prediction.min_word_chars {
             return;
         }
         let previous = selected
