@@ -1076,7 +1076,6 @@ pub mod moderation;
 pub mod pack_downloads;
 pub mod plugins;
 pub mod providers;
-pub mod reporting;
 pub mod session;
 pub mod session_store;
 pub mod settled;

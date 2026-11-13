@@ -32,7 +32,6 @@ pub mod notices;
 pub mod plugins;
 pub mod proxy;
 pub mod skin;
-pub mod telemetry;
 pub mod typing_statistics;
 pub mod update_check;
 pub mod vocabulary;
