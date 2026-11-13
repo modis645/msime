@@ -4117,7 +4117,9 @@ fn disabled_by_default() -> bool {
 }
 
 fn default_clipboard_history_limit() -> usize {
-    crate::clipboard::DEFAULT_CLIPBOARD_HISTORY_LIMIT
+    // 100 是产品的默认容量（上游是 50）；档位表 `CLIPBOARD_HISTORY_LIMITS` 里有它，
+    // 旧偏好里写着别一档时照旧读那一档，这里只决定没有这个字段时的新默认。
+    100
 }
 
 /// 智能标点在所有平台上默认开：中文模式下打 `0.10.1` 得到的是 `0.10.1`，不是 `0。10。1`。同一个默认也给重复标点转中文、数字后直出和字母后直出；空格转换不跟着开（见 `smart_punctuation_space_convert`）。
