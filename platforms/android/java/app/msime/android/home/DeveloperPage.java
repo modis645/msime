@@ -732,7 +732,7 @@ public final class DeveloperPage extends ReloadingDetailPage {
     }
 
     /**
-     * 诊断包的读取范围 `{state_root, include, sources}`：导出诊断包时再加上 destination 交给 `NativeClient.diagnosticBundle`，MCP 上传时原样交给 Rust 的 diagnostics_upload。源文件是键盘写的 `<files>/diagnostics/*.jsonl` 和 Telemetry 的崩溃记录目录，不存在的传 null。状态目录还没准备好时为 null。
+     * 诊断包的读取范围 `{state_root, include, sources}`：导出诊断包时再加上 destination 交给 `NativeClient.diagnosticBundle`，MCP 上传时原样交给 Rust 的 diagnostics_upload。源文件是键盘写的 `<files>/diagnostics/*.jsonl`，不存在的传 null；上报关闭后已经不再写崩溃记录，`crash_logs` 一律传 null。状态目录还没准备好时为 null。
      */
     @Nullable private static JSONObject bundleRequest(Context context, DiagnosticsApi.Include include) {
         String stateRoot = HostStore.directory(context);
@@ -740,7 +740,6 @@ public final class DeveloperPage extends ReloadingDetailPage {
         File files = context.getFilesDir();
         File events = new File(files, "diagnostics/input-events.jsonl");
         File perf = new File(files, "diagnostics/perf.jsonl");
-        File crashes = new File(files, "telemetry/telemetry-crashes");
         try {
             return new JSONObject()
                 .put("state_root", stateRoot)
@@ -750,7 +749,7 @@ public final class DeveloperPage extends ReloadingDetailPage {
                     .put("input_events", include.inputEvents())
                     .put("config_snapshot", include.configSnapshot()))
                 .put("sources", new JSONObject()
-                    .put("crash_logs", crashes.isDirectory() ? crashes.getAbsolutePath() : JSONObject.NULL)
+                    .put("crash_logs", JSONObject.NULL)
                     .put("performance_logs", perf.isFile() ? perf.getAbsolutePath() : JSONObject.NULL)
                     .put("input_events", events.isFile() ? events.getAbsolutePath() : JSONObject.NULL));
         } catch (JSONException malformed) {
