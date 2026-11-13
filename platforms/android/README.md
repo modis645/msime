@@ -380,7 +380,7 @@ Apple 的社区资源入口已迁移到同一页的“皮肤 / 词库 / 回复�
 
 词库页「导入词库」的来源按 client-services 返回的格式清单列出，依次是文本文件、搜狗细胞词库（`.scel`）、Rime 词典和纯汉字词表；文件名以 `.scel` 结尾时不论从哪个来源选的都按细胞词库读（`DictionaryCollectionsStore.formatForFile`）。细胞词库是二进制文件，按 base64 放进命名词库 `import` 动作的 `bytes_base64`，上限 8 MiB（`MAX_SCEL_IMPORT_BYTES`，编码后连同宿主选项仍在 `msime_client_dictionary_collections` 的 17 MiB 请求上限之内），由 client-services 的 `dictionary::scel` 转成标准文本后照文本导入，权重统一为默认值 10000，不完整或损坏的文件整份拒绝（`import_malformed`）。
 
-匿名使用统计走 client-services 的共享上报器（`msime_client_telemetry_*`，JNI 见 `NativeClient.telemetry*`），由 `core/Telemetry.java` 调起：两个进程共用 `files/telemetry/` 和其中的文件锁。会话属于 `:ime` 进程，`MSIMEInputService.onCreate` 开始、`onDestroy` 正常结束；键盘每次弹出时至多每 6 小时补发一次队列（同时记下新一天的 active）。`HomeActivity` 只补发并安装崩溃处理。未捕获异常在交给系统前同步写入崩溃记录（`:ime` 写本会话的记录，主进程写独立记录），下次键盘启动时由共享上报器转成 crash 事件；只留下会话标记（被系统杀掉）不算崩溃。开关是共享偏好 `usage_reporting`（默认开），在“词库与输入”面板“需要留意的”一组，关闭后立即清空队列；不再发送 download 事件，版本取 APK 的 versionName（`version.txt`，发布工作流可覆盖）。公告由“设置”页在回到前台时经 `msime_client_notices` 取（共享缓存一分钟），正文用 Markwon core 渲染（不解析 HTML、不加载图片，链接只以浏览器打开 http/https/mailto），“知道了”按公告 id 记在本机。社区详情面板提供“举报”，用固定的六个原因和可选说明发 `POST /v1/community/reports`，身份为 Google 账号或键盘的匿名账号。
+匿名使用统计、崩溃上报和对应的 `usage_reporting` 开关在本 fork 已经整块删除：`core/Telemetry.java`、`NativeClient.telemetry*` 与 `client-services` 的上报器都不在，APK 不写 `files/telemetry/`，也不向 `api.msime.app` 发任何事件，所以设置里没有「匿名使用统计」这一项。公告由“设置”页在回到前台时经 `msime_client_notices` 取（共享缓存一分钟），正文用 Markwon core 渲染（不解析 HTML、不加载图片，链接只以浏览器打开 http/https/mailto），“知道了”按公告 id 记在本机。社区详情面板提供“举报”，用固定的六个原因和可选说明发 `POST /v1/community/reports`，身份为 Google 账号或键盘的匿名账号。
 
 本地跑这条命令得到的是开发构建（versionCode 1），签名与正式版相同：机器上有发布密钥时用它，没有时才退回开发密钥并警告，规则见下文和 `scripts/signing.sh`；开发密钥签名的包不得发布。`build-apk.sh` 不是被取代的旧入口，而是本目录原生宿主自己的构建入口，验证本目录改动时用它。
 
