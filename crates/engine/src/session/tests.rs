@@ -419,6 +419,30 @@ fn next_word_prediction_is_opt_in_and_has_no_composing_text() {
     assert!(on.snapshot().candidates.iter().any(|row| row.word == "菜"));
 }
 
+/// 单字门槛可调：`prediction_min_word_chars` 为 2 时单字上屏不带续写，引擎默认 1 时照旧带。
+#[test]
+fn prediction_min_word_chars_gates_single_character_commits() {
+    let fixture = prediction_fixture();
+    let mut gated = fixture.session_with(|options| {
+        options.next_word_prediction = true;
+        options.learning = false;
+        options.prediction_min_word_chars = 2;
+    });
+    type_text(&mut gated, "chi");
+    assert_eq!(select_word(&mut gated, "吃").commit.as_deref(), Some("吃"));
+    assert!(!gated.snapshot().prediction);
+    assert!(gated.snapshot().candidates.is_empty());
+
+    let mut open = fixture.session_with(|options| {
+        options.next_word_prediction = true;
+        options.learning = false;
+        options.prediction_min_word_chars = 1;
+    });
+    type_text(&mut open, "chi");
+    assert_eq!(select_word(&mut open, "吃").commit.as_deref(), Some("吃"));
+    assert!(open.snapshot().prediction);
+}
+
 /// 联想按上屏的词查以它开头的长词，给的是后半截：上屏 巨 不联想出 巨乳 的 乳。
 #[test]
 fn next_word_prediction_skips_offensive_words() {
