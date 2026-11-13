@@ -79,6 +79,8 @@ pub struct EngineOptions {
     pub learn_english_on_enter: bool,
     /// 上屏后联想；默认关闭，宿主只在支持空闲候选的键盘上启用。
     pub next_word_prediction: bool,
+    /// 上屏后联想要求刚上屏的词至少几个字（`SessionOptions::prediction_min_word_chars`）；`None` 用引擎默认 1。
+    pub prediction_min_word_chars: Option<usize>,
     pub autocorrect_transposition: bool,
     pub autocorrect_neighbor: bool,
     /// Masked with `fuzzy_rule::ALL`.
@@ -294,6 +296,7 @@ fn options_for_paths(paths: &RuntimePaths, enabled_schemes: SchemeSet) -> Engine
         learning: false,
         learn_english_on_enter: true,
         next_word_prediction: false,
+        prediction_min_word_chars: None,
         autocorrect_transposition: false,
         autocorrect_neighbor: false,
         fuzzy_pinyin_rules: 0,
@@ -510,6 +513,7 @@ pub fn session_options(options: &EngineOptions) -> Result<SessionOptions> {
         // 桥接层从没把它交给宿主（api-contract §1a），产品一直按开。
         personal_context: true,
         next_word_prediction: options.next_word_prediction,
+        prediction_min_word_chars: options.prediction_min_word_chars.unwrap_or(1),
         sentence_association: options.sentence_association.clone(),
         rescoring_context: options.rescoring_context.clone(),
         command_table: options.command_table.clone(),
