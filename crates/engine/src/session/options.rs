@@ -99,6 +99,8 @@ pub struct SessionOptions {
     pub personal_context: bool,
     /// 上屏后联想；独立于整句候选，默认关闭。
     pub next_word_prediction: bool,
+    /// 上屏后联想要求刚上屏的词至少几个字；默认 1，即单字也带续写（与上游一致）。产品层（host-api）设成 2，单字上屏不再跳一排联想。
+    pub prediction_min_word_chars: usize,
     pub sentence_association: SentenceAssociationOptions,
     /// Committed text the neural sentence models condition on; `Session::set_rescoring_context` updates it live.
     pub rescoring_context: String,
@@ -172,6 +174,7 @@ impl SessionOptions {
             wubi: WubiInputOptions::default(),
             personal_context: true,
             next_word_prediction: false,
+            prediction_min_word_chars: 1,
             sentence_association: SentenceAssociationOptions::default(),
             rescoring_context: String::new(),
             command_table: Vec::new(),
