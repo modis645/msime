@@ -8880,7 +8880,9 @@ fn wubi_edition_first_run_defaults_to_wubi_with_mixed_pinyin_on() {
     assert!(!store.load().unwrap().preferences.wubi_mixed_pinyin);
 }
 
-/// 拼音版只有全拼和双拼：默认方案仍是全拼，触屏键盘去掉五笔、日文和韩文入口，保留手写。
+/// 拼音版的触屏键盘只留本 fork 保留的几种中文方案：全拼（26 键）、九键（含九键双拼）、
+/// 十四键、十八键和手写。原版还带的小鹤、自然码、微软、首道双拼已在这个 fork 里删掉，
+/// 所以默认启用的清单也相应变短；默认方案仍是全拼，不带五笔混拼。
 #[test]
 fn pinyin_edition_narrows_the_touch_keyboard() {
     let pinyin = crate::edition::Edition::by_id("pinyin").unwrap();
@@ -8893,11 +8895,10 @@ fn pinyin_edition_narrows_the_touch_keyboard() {
         [
             TouchKeyboardScheme::Quanpin,
             TouchKeyboardScheme::NineKey,
-            TouchKeyboardScheme::Xiaohe,
-            TouchKeyboardScheme::Ziranma,
-            TouchKeyboardScheme::Microsoft,
-            TouchKeyboardScheme::Shoudao,
             TouchKeyboardScheme::Handwriting,
+            TouchKeyboardScheme::FourteenKey,
+            TouchKeyboardScheme::NineKeyShuangpin,
+            TouchKeyboardScheme::EighteenKey,
         ]
         .into_iter()
         .collect()
