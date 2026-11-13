@@ -125,10 +125,23 @@ impl Prediction {
         };
         let limit = if self.pool { POOL } else { LIMIT };
         let rows = database.query_next_words(word, pinyin, limit);
-        // 续写门槛：一页里只留词频不低于最高者八分之一的行，低频续写不再占首屏。
+        // 续写门槛：一页里只留词频不低于最高者八分之一的行，低频续写不再占首屏；但至少留三行，
+        // 免得只连着一条高频长词时整排联想都消失（`sentence_excluded` 里 巨 → 巨乳 被粗俗词表拦掉就剩空）。
+        const FLOOR_ROWS: usize = 3;
         let floor = rows.iter().map(|row| row.weight).max().unwrap_or(0) / 8;
-        for row in rows {
-            if row.weight < floor {
+        let mut ranked: Vec<usize> = (0..rows.len()).collect();
+        ranked.sort_by(|a, b| rows[*b].weight.cmp(&rows[*a].weight));
+        let mut keep = vec![false; rows.len()];
+        for index in &ranked {
+            if rows[*index].weight >= floor {
+                keep[*index] = true;
+            }
+        }
+        for index in ranked.iter().take(FLOOR_ROWS) {
+            keep[*index] = true;
+        }
+        for (row, keep_row) in rows.into_iter().zip(keep) {
+            if !keep_row {
                 continue;
             }
             let seed_word = format!("{word}{}", row.value);
