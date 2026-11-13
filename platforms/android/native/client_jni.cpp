@@ -53,8 +53,7 @@ constexpr jsize kCloudClipboardE2eRequestLimit = 2 * 1024 * 1024;
 // 与 msime_client_cloud_clipboard_source、msime_client_relay_cloud_clipboard、msime_client_relay_cloud_clipboard_exchange 和 msime_client_cloud_clipboard_webdav_probe 写在头文件里的上限一致。
 constexpr jsize kCloudClipboardSourceDirectoryLimit = 16384;
 constexpr jsize kCloudClipboardRelayRequestLimit = 131072;
-// 与 msime_client_dictionary_sync 头文件里的请求上限（2 MiB，HostOptions 文档里带着整份偏好）一致；「测试连接」的请求带着应用密码，请求和响应都不记录。
-constexpr jsize kDictionarySyncRequestLimit = 2 * 1024 * 1024;
+// 请求上限 2 MiB（HostOptions 文档里带着整份偏好）；「测试连接」的请求带着应用密码，请求和响应都不记录。
 // 与 C 入口一致：为 8 MiB 原始词表的 JSON 转义和元数据留出空间。
 constexpr jsize kVocabularyReviewRequestLimit = 17 * 1024 * 1024;
 // 「加入生词本」：候选原文、释义和读音，与 C 入口的 64 KiB 上限一致。
@@ -358,10 +357,6 @@ JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_cloudClipboardR
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_cloudClipboardWebDavProbeRaw(JNIEnv *env, jclass, jbyteArray request) {
     return bounded_request(env, request, kCloudClipboardRelayRequestLimit,
         msime_client_cloud_clipboard_webdav_probe);
-}
-JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_dictionarySyncRaw(JNIEnv *env, jclass, jbyteArray request) {
-    return bounded_request(env, request, kDictionarySyncRequestLimit,
-        msime_client_dictionary_sync);
 }
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_doubaoDecodeFrameRaw(JNIEnv *env, jclass, jbyteArray frame) {
     if (!frame) return response(env, msime_client_doubao_decode_frame(nullptr, 0));
