@@ -376,10 +376,10 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
         return ToolbarOrderPolicy.ordered(settings.text(AndroidLocalSettings.TOOLBAR_ORDER));
     }
 
-    /** 工具栏按钮是否开启：本地项读取本地设置，语音读共享偏好顶层的 `touch_voice_shortcut`（缺键为关），其余读取 `touch_toolbar`；撤销、重做缺键为关。 */
+    /** 工具栏按钮是否开启：本地项读取本地设置，语音读共享偏好顶层的 `touch_voice_shortcut`（缺键为开），其余读取 `touch_toolbar`；撤销、重做缺键为关。 */
     private static boolean toolbarButton(JSONObject preferences, AndroidLocalSettings.Snapshot settings, String member) {
         if (AndroidLocalSettings.specs().containsKey(member)) return settings.bool(member);
-        if (member.equals(ToolbarOrderPolicy.VOICE_SHORTCUT_PREFERENCE)) return preferences.optBoolean(member, false);
+        if (member.equals(ToolbarOrderPolicy.VOICE_SHORTCUT_PREFERENCE)) return preferences.optBoolean(member, true);
         JSONObject toolbar = preferences.optJSONObject("touch_toolbar");
         if (toolbar == null) return !member.equals("undo") && !member.equals("redo");
         return toolbar.optBoolean(member, !member.equals("undo") && !member.equals("redo"));
