@@ -40,23 +40,14 @@ jobs:
         run: rustup toolchain install
       # 引擎的拼音/双拼/五笔、候选切分、简拼混输排序都在这里，改动这三条之后靠它兜住行为回归。
       #
-      # 有 19 条用例在 GitHub 托管 runner 上本来就红，与任何一次改动无关：把同一份工作流放到
-      # 今天改动之前的树（90b9580f，运行 43453332131）上跑，同样是 3088 passed / 19 failed，
-      # 失败的名字也一样。它们集中在「上屏后联想」（session::tests::next_word_prediction_*、
-      # session::tests::prediction_pool::*）、句级排除（session::tests::sentence_excluded::*）、
-      # caret_suffix 的词序断言，以及一条按分配次数计数的断言
-      # （typing_at_a_caret_reuses_the_editing_text_length，166 对 164）。这些依赖随包的联想模型与
-      # 词库顺序，在本仓库托管 runner 的布局下拿不到同样的结果，所以先按下不表，等上游把它们改成
-      # 不依赖宿主的断言之后再放开——留着它们红着，只会让这个网连同真问题一起被人忽略。
+      # 之前那 19 条红是本 fork 自己的三处引擎调整（上屏后联想门槛、整句学习门槛 5 字、
+      # `confidence_k = 3.0`）与上游断言不一致，与环境无关。其中杀伤面最大的「单字上屏不联想」
+      # 已经改成宿主选项 `SessionOptions::prediction_min_word_chars`：引擎默认 1（上游语义），
+      # host-api 设 2 才让产品里单字上屏不跳联想。这里跑的就是引擎默认语义，因此不再跳过任何用例。
       - name: Unit and golden tests for msime-engine
         run: |
           set -euo pipefail
-          cargo test --locked -p msime-engine -- \
-            --skip next_word_prediction \
-            --skip prediction_pool:: \
-            --skip sentence_excluded:: \
-            --skip caret_suffix::choosing_a_suffix_word_consumes_its_syllables_and_keeps_editing_the_rest \
-            --skip typing_at_a_caret_reuses_the_editing_text_length
+          cargo test --locked -p msime-engine
       - name: Unit tests for msime-input-runtime
         run: cargo test --locked -p msime-input-runtime
       # 偏好键的单测只读写临时目录，不需要设备；上游把它挂在 Native Platform CI 的 Linux 作业上。
