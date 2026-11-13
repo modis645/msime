@@ -1,5 +1,6 @@
 package app.msime.android;
 
+import com.google.mlkit.common.MlKitException;
 import com.google.mlkit.common.model.DownloadConditions;
 import com.google.mlkit.common.model.RemoteModelManager;
 import com.google.mlkit.vision.digitalink.recognition.DigitalInkRecognitionModel;
@@ -20,8 +21,12 @@ public final class MlKitHandwritingModel {
     private MlKitHandwritingModel() {}
 
     private static DigitalInkRecognitionModel model() {
-        DigitalInkRecognitionModelIdentifier identifier =
-            DigitalInkRecognitionModelIdentifier.fromLanguageTag("zh-Hani-CN");
+        DigitalInkRecognitionModelIdentifier identifier;
+        try {
+            identifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("zh-Hani-CN");
+        } catch (MlKitException error) {
+            throw new IllegalStateException("Chinese handwriting model unavailable", error);
+        }
         if (identifier == null) throw new IllegalStateException("Chinese handwriting model unavailable");
         return DigitalInkRecognitionModel.builder(identifier).build();
     }
