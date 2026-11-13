@@ -74,14 +74,13 @@ public final class BottomTabsSmoke {
         check(!homeSource.contains("allSettings") && !read(root, SETTINGS_LIST).contains("all_settings"),
             "the all-settings tab mode is gone");
 
-        // 皮肤回到设置列表，归设置 tab；打开它照常压栈。
+        // 皮肤页和 AI 设计皮肤页都已经删除，注册表里不再有这两项。
         String settingsList = read(root, SETTINGS_LIST);
         check(!settingsList.contains("PageId.SKINS"),
             "the 皮肤 row is gone: skins stay at the default and are not editable");
         String pages = read(root, PAGE_ID);
-        check(pages.contains("SKINS(\"SkinsPage\", \"皮肤\", HostDeepLink.TAB_SETTINGS,")
-                && pages.contains("AI_SKIN(\"AiSkinPage\", \"AI 设计皮肤\", HostDeepLink.TAB_SETTINGS,"),
-            "the skin pages belong to the settings tab");
+        check(!pages.contains("SKINS(\"SkinsPage\"") && !pages.contains("AI_SKIN(\"AiSkinPage\""),
+            "the skin pages are gone from the registry");
         String navigator = read(root, NAVIGATOR);
         check(!navigator.contains("PageId.SKINS"), "opening the skin page pushes it like any other page");
 

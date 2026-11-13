@@ -33,7 +33,7 @@ import org.json.JSONObject;
 /**
  * 皮肤、AI 设计皮肤、键盘、AI 润色与回复、输入、表达这几页共用的偏好读写和几种自定义行。
  *
- * <p>这些页面原来是键盘页六个方块背后的底部面板，内容已经搬进各自的详情页（{@link SkinsPage}、{@link KeyboardOptionsPage}、{@link AiSettingsPage}、{@link TypingPage}、{@link ExpressionPage}），这里只留下它们都要用的部分。每次写入都在工作线程上重新读一遍共享偏好再改，按 revision 做 compare-and-swap：键盘是另一个进程，页面打开以后它可能已经改过设置。
+ * <p>这些页面原来是键盘页六个方块背后的底部面板，内容已经搬进各自的详情页（{@link KeyboardOptionsPage}、{@link AiSettingsPage}、{@link TypingPage}、{@link ExpressionPage}），这里只留下它们都要用的部分。每次写入都在工作线程上重新读一遍共享偏好再改，按 revision 做 compare-and-swap：键盘是另一个进程，页面打开以后它可能已经改过设置。
  */
 final class KeyboardSheets {
     private KeyboardSheets() {}

@@ -403,15 +403,14 @@ public final class CommunityFragment extends Fragment {
         });
     }
 
-    /** 使用：与设置里的皮肤页选中「我的设计」写法相同，换上这款设计并记一次换皮肤。 */
+    /** 使用：换上这款设计，并记一次换皮肤。 */
     private void use(CommunityCatalog.Item item) {
         JSONObject design = item.payload();
         if (design == null) return;
-        Boolean editingDark = getParentFragment() instanceof SkinsPage page ? page.editingDark() : null;
         adapter.setAction(item.id(), CommunityAdapter.Action.BUSY);
         HostTask.run(this, context -> {
             JSONObject saved = KeyboardSheets.write(context, preferences -> {
-                boolean dark = editingDark != null ? editingDark : app.msime.android.KeyboardSkin.resolveDark(
+                boolean dark = app.msime.android.KeyboardSkin.resolveDark(
                     preferences.optString("screen_keyboard_theme", "follow"),
                     preferences.optString("theme", "system"), AppMode.dark(context));
                 preferences.put(app.msime.android.KeyboardSkinModeChoice.key(dark),
