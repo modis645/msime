@@ -32,8 +32,8 @@ public final class ToolbarVoiceButtonSmoke {
 
         String options = read("home/KeyboardOptionsPage.java");
         check(body(options, "private static boolean toolbarButton(")
-                .contains("if (member.equals(ToolbarOrderPolicy.VOICE_SHORTCUT_PREFERENCE)) return preferences.optBoolean(member, false);"),
-            "the toolbar settings read the voice switch from the top-level preference, off by default");
+                .contains("if (member.equals(ToolbarOrderPolicy.VOICE_SHORTCUT_PREFERENCE)) return preferences.optBoolean(member, true);"),
+            "the toolbar settings read the voice switch from the top-level preference, on by default");
         String saveToolbar = body(options, "private void saveToolbar(String member, boolean value) {");
         check(saveToolbar.contains("preferences -> preferences.put(member, value)"),
             "the toolbar settings write the voice switch at the top level, not into touch_toolbar");
