@@ -357,9 +357,7 @@ public final class CommunityFragment extends Fragment {
         CommunityAdapter.Action action = adapter.action(item);
         if (action == CommunityAdapter.Action.BUSY) return;
         switch (item.kind()) {
-            case SKIN -> {
-                if (action == CommunityAdapter.Action.DONE) use(item); else get(item);
-            }
+            case SKIN -> { }
             case DICTIONARY -> {
                 if (action == CommunityAdapter.Action.AVAILABLE) add(item);
             }
@@ -386,32 +384,6 @@ public final class CommunityFragment extends Fragment {
             adapter.setAction(item.id(), saved ? CommunityAdapter.Action.DONE : CommunityAdapter.Action.AVAILABLE);
             MsToast.show(requireContext(), saved ? "已获取「" + item.name() + "」，点「使用」换上"
                 : failure == null ? "保存失败，请稍后重试。" : failure);
-        });
-    }
-
-    /** 使用：换上这款设计，并记一次换皮肤。 */
-    private void use(CommunityCatalog.Item item) {
-        JSONObject design = item.payload();
-        if (design == null) return;
-        adapter.setAction(item.id(), CommunityAdapter.Action.BUSY);
-        HostTask.run(this, context -> {
-            JSONObject saved = KeyboardSheets.write(context, preferences -> {
-                boolean dark = app.msime.android.KeyboardSkin.resolveDark(
-                    preferences.optString("screen_keyboard_theme", "follow"),
-                    preferences.optString("theme", "system"), AppMode.dark(context));
-                preferences.put(app.msime.android.KeyboardSkinModeChoice.key(dark),
-                    app.msime.android.KeyboardSkinModeChoice.design(item.id()));
-                KeyboardSheets.applyDesignFeedback(preferences, design);
-            });
-            if (saved == null) return Boolean.FALSE;
-            KeyboardSheets.applyLocalFeedback(context, design);
-            KeyboardSheets.recordSkin(context, item.id());
-            return Boolean.TRUE;
-        }, applied -> {
-            if (getView() == null) return;
-            adapter.setAction(item.id(), CommunityAdapter.Action.DONE);
-            MsToast.show(requireContext(), Boolean.TRUE.equals(applied)
-                ? "已换上「" + item.name() + "」" : "切换失败，保留当前皮肤");
         });
     }
 

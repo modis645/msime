@@ -163,7 +163,6 @@ final class LocalBackup {
                 .put("contents", new JSONObject()
                     .put("settings", settings.length())
                     .put("android_local", local.length())
-                    .put("skins", skinCount)
                     .put("phrases", phrases.size())
                     .put("dictionary_words", words == null ? 0 : words)
                     .put("learning", learning == null ? 0 : learning)
@@ -342,8 +341,6 @@ final class LocalBackup {
             JSONObject settings = jsonEntry(zip, LocalBackupPolicy.SETTINGS, LocalBackupPolicy.MAX_SETTINGS_BYTES);
             if (settings != null && settings.has("settings") && settings.optJSONObject("settings") == null) return false;
             jsonEntry(zip, LocalBackupPolicy.ANDROID_LOCAL, LocalBackupPolicy.MAX_ANDROID_LOCAL_BYTES);
-            byte[] skins = entryBytes(zip, LocalBackupPolicy.SKINS, LocalBackupPolicy.MAX_SKINS_BYTES);
-            if (skins != null) new JSONArray(TextPolicy.utf8(skins));
             JSONObject phrases = jsonEntry(zip, LocalBackupPolicy.PHRASES, LocalBackupPolicy.MAX_PHRASES_BYTES);
             if (phrases != null && phrases.has("phrases") && phrases.optJSONArray("phrases") == null) return false;
             if (phrases != null && phrases.has("notes") && phrases.optJSONObject("notes") == null) return false;
@@ -425,13 +422,10 @@ final class LocalBackup {
                 }
                 String part = "设置";
                 boolean settings;
-                int skins;
                 int phrases;
                 List<String> unheld = new ArrayList<>(1);
                 try {
                     settings = restoreSettings(context, directory, zip);
-                    part = "自定义皮肤";
-                    skins = restoreSkins(directory, zip);
                     part = "常用语";
                     phrases = restorePhrases(context, zip, undo, unheld);
                 } catch (IOException | JSONException | RuntimeException error) {
@@ -439,13 +433,12 @@ final class LocalBackup {
                     return LocalBackupPolicy.rolledBack(part, undo.apply(context, directory));
                 }
                 if (settings) SyncSignals.markDirty(context, SyncSwitch.SETTINGS);
-                if (skins > 0) SyncSignals.markDirty(context, SyncSwitch.SKINS);
                 adoptPresentStarters(context, undo.presentPhrases);
                 List<String> failed = new ArrayList<>(4);
                 failed.addAll(unheld);
                 int[] words = restoreDictionary(context, zip, dictionary, failed);
                 int habitCount = restoreHabits(context, zip, habits, failed);
-                return LocalBackupPolicy.summary(new LocalBackupPolicy.Restored(settings, skins, phrases, words[0],
+                return LocalBackupPolicy.summary(new LocalBackupPolicy.Restored(settings, 0, phrases, words[0],
                     words[1], words[2], habitCount, failed));
             }
         } catch (IOException | RuntimeException error) {
@@ -562,7 +555,6 @@ final class LocalBackup {
                 settings.put(style.getKey(), style.getValue());
         }
         if (settings != null && settings.length() > 0) {
-            settings.remove(SKINS_KEY);
             applySettingsDocument(context, directory, settings);
             applied = true;
         }
