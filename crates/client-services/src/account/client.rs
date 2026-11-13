@@ -2346,18 +2346,6 @@ impl AccountApi for BackendAccountClient {
         self.send_voice_contribution(contribution, access_token)
     }
 
-    fn put_typing_statistics(
-        &self,
-        upload: &crate::typing_statistics::upload::TypingStatisticsUpload,
-        access_token: &str,
-    ) -> Result<(), AccountFailure> {
-        self.put_typing_statistics(upload, access_token)
-    }
-
-    fn delete_typing_statistics(&self, access_token: &str) -> Result<(), AccountFailure> {
-        self.delete_typing_statistics(access_token)
-    }
-
     fn qq_links(&self, access_token: &str) -> Result<AccountQqLinks, AccountFailure> {
         self.list_qq_links(access_token)
     }

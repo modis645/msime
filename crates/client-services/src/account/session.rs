@@ -1110,19 +1110,6 @@ impl<A: AccountApi, S: AccountSessionStorage> BackendAccountSession<A, S> {
         self.authenticated_detailed(|api, token| api.download_link(platform, token))
     }
 
-    /// 上传打字统计的最近几天，`upload` 由 [`crate::typing_statistics::upload::build_upload`] 构建。只用这个会话的账号；没有登录是 `account_unauthorized`。
-    pub fn put_typing_statistics(
-        &self,
-        upload: &crate::typing_statistics::upload::TypingStatisticsUpload,
-    ) -> Result<(), AccountFailure> {
-        self.authenticated_detailed(|api, token| api.put_typing_statistics(upload, token))
-    }
-
-    /// 清空本人全部设备在云端的打字统计。
-    pub fn delete_typing_statistics(&self) -> Result<(), AccountFailure> {
-        self.authenticated_detailed(|api, token| api.delete_typing_statistics(token))
-    }
-
     /// 本人绑定的 QQ 群友。
     pub fn qq_links(&self) -> Result<AccountQqLinks, AccountFailure> {
         self.authenticated_detailed(|api, token| api.qq_links(token))

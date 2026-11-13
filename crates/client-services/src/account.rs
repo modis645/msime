@@ -737,7 +737,6 @@ pub mod settings_sync;
 /// 账号释义（`/v1/translate`）。
 mod translate;
 /// 打字统计上云：上传最近几天的计数和清空云端副本。
-mod typing_upload;
 /// 云端数据的汇总、导出和删除。
 mod user_data;
 mod validate;
@@ -767,7 +766,6 @@ pub use phrases::*;
 pub use qq_links::*;
 pub use session::*;
 pub use translate::*;
-pub use typing_upload::*;
 pub use user_data::*;
 pub use validate::*;
 pub use voice_contribution::*;

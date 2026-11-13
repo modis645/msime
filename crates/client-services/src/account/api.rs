@@ -407,20 +407,6 @@ pub trait AccountApi: Send + Sync + 'static {
         Err(AccountError::Unavailable.into())
     }
 
-    /// `PUT /v1/users/me/typing-statistics`。
-    fn put_typing_statistics(
-        &self,
-        _upload: &crate::typing_statistics::upload::TypingStatisticsUpload,
-        _access_token: &str,
-    ) -> Result<(), AccountFailure> {
-        Err(AccountError::Unavailable.into())
-    }
-
-    /// `DELETE /v1/users/me/typing-statistics`。
-    fn delete_typing_statistics(&self, _access_token: &str) -> Result<(), AccountFailure> {
-        Err(AccountError::Unavailable.into())
-    }
-
     /// `GET /v1/users/me/qq-links`。
     fn qq_links(&self, _access_token: &str) -> Result<AccountQqLinks, AccountFailure> {
         Err(AccountError::Unavailable.into())
