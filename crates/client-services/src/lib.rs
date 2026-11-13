@@ -1,4 +1,4 @@
-//! 客户端里对接后端服务和管理用户内容的部分：账号、社区、遥测、公告、检查更新、诊断包、自建云剪贴板中继，以及皮肤、插件、词库、生词本、常用语和打字统计。
+//! 客户端里对接后端服务和管理用户内容的部分：账号、社区、公告、检查更新、诊断包、自建云剪贴板中继，以及皮肤、插件、词库、生词本、常用语和打字统计。
 //!
 //! 这些模块要联网、要解 zip 和图片、要跑脚本插件的校验，单独成一个 crate，`msime-client-core` 就不必带上 reqwest、image、zip、wasmi 这些依赖，只要偏好和协议的宿主（输入运行时、后端引擎）编译图更小。下面用私有 `use` 把 `msime-client-base` 和 `msime-client-core` 里用到的模块和文本谓词接到本 crate 的根上，模块内部照旧写 `crate::storage::...`、`crate::preferences::...`、`crate::is_bounded_utf16`。
 
@@ -35,3 +35,16 @@ pub mod skin;
 pub mod typing_statistics;
 pub mod update_check;
 pub mod vocabulary;
+
+/// 把宿主自报的平台名收成本 crate 认的那几个：账号与公告的请求都用它。
+pub fn canonical_platform(value: &str) -> Option<&'static str> {
+    Some(match value.trim().to_ascii_lowercase().as_str() {
+        "windows" | "win" => "windows",
+        "macos" | "mac" | "darwin" => "macos",
+        "linux" => "linux",
+        "android" => "android",
+        "ios" | "ipados" => "ios",
+        "harmony" | "harmonyos" | "ohos" => "harmony",
+        _ => return None,
+    })
+}

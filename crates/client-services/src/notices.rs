@@ -92,7 +92,7 @@ pub fn fetch_notices(
     channel: NoticeChannel,
     platform: &str,
 ) -> Result<Vec<Notice>, AccountError> {
-    let platform = crate::telemetry::canonical_platform(platform).ok_or(AccountError::Invalid)?;
+    let platform = crate::canonical_platform(platform).ok_or(AccountError::Invalid)?;
     let feed = client.json_with_limit::<NoticeFeed, ()>(
         Method::GET,
         &format!(
@@ -166,7 +166,7 @@ impl NoticeStore {
         fetch: impl FnOnce() -> Result<Vec<Notice>, AccountError>,
     ) -> Result<Vec<Notice>, NoticeError> {
         let platform =
-            crate::telemetry::canonical_platform(platform).ok_or(NoticeError::Invalid)?;
+            crate::canonical_platform(platform).ok_or(NoticeError::Invalid)?;
         let lock = self.lock()?;
         let feed = format!("{}/{platform}", channel.as_str());
         let mut cache = self.read_locked(&lock);
