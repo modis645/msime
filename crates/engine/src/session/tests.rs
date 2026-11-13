@@ -4476,7 +4476,8 @@ fn typing_at_a_caret_reuses_the_editing_text_length() {
 
     assert!(result.handled);
     // 候选行字段是 `SharedString`：克隆行只加引用计数，新建行的每个非空字段多一个 `Arc`。
-    assert_eq!(allocations, 164, "光标处输入的分配次数：{allocations}");
+    // 切分与联想门槛调整后这条路径多两次分配（164 → 166）；这里只把住「不随编辑文本长度增长」。
+    assert_eq!(allocations, 166, "光标处输入的分配次数：{allocations}");
 }
 
 #[test]
