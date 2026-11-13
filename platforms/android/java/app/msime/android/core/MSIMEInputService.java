@@ -338,14 +338,14 @@ public final class MSIMEInputService extends InputMethodService {
     int candidateFontSize = 16;
     int candidatePreeditFontSize = 16;
     int candidateScalePercent = 100;
-    /** 拼音显示在候选栏还是输入框（`touch_spelling_position`）；共享偏好缺失或非法时沿用输入框。 */
-    private String spellingPosition = CandidatePreeditStylePolicy.EDITOR;
+    /** 拼音显示在候选栏还是输入框（`touch_spelling_position`）；共享偏好缺失或非法时按产品默认只画在候选栏，核心默认仍是写进输入框。 */
+    private String spellingPosition = CandidatePreeditStylePolicy.CANDIDATE_BAR;
     CandidateAppearance.Palette candidateAppearance =
         CandidateAppearance.fromSkin(KeyboardSkin.system(false));
     int touchKeySpacingTenths = KeyboardSpacingPolicy.DEFAULT_KEY_SPACING_TENTHS;
     int touchRowSpacingTenths = KeyboardSpacingPolicy.DEFAULT_ROW_SPACING_TENTHS;
     int touchKeyboardHeightAdjustment = KeyboardHeightPolicy.DEFAULT_HEIGHT_ADJUSTMENT_DP;
-    /** 工具栏语音按钮，来自共享偏好 `touch_voice_shortcut`，缺省为关；在「键盘 → 工具栏」打开「语音」或键盘内打开「顶部语音入口」时为真（#10142）；「语音输入 → 启动方式」选「无」会关掉它，选「工具栏/长按空格」不改它（#10309）。 */
+    /** 工具栏语音按钮，来自共享偏好 `touch_voice_shortcut`，缺省为开；在「键盘 → 工具栏」打开「语音」或键盘内打开「顶部语音入口」时为真（#10142）；「语音输入 → 启动方式」选「无」会关掉它，选「工具栏/长按空格」不改它（#10309）。 */
     boolean touchVoiceShortcutEnabled;
     /** 26 键双拼的字母键画不画声母/韵母提示，来自共享偏好 `touch_shuangpin_key_hints`，缺省为关。 */
     private boolean shuangpinKeyHintsEnabled = false;
@@ -2811,8 +2811,8 @@ public final class MSIMEInputService extends InputMethodService {
         touchRowSpacingTenths = KeyboardSpacingPolicy.rowSpacing(preferences == null ? -1
             : NumberPolicy.strictInt(preferences, "touch_row_spacing_tenths", -1));
         adoptSavedHeightAdjustment(heightAdjustmentFrom(preferences));
-        touchVoiceShortcutEnabled = preferences != null
-            && preferences.optBoolean("touch_voice_shortcut", false);
+        touchVoiceShortcutEnabled = preferences == null
+            || preferences.optBoolean("touch_voice_shortcut", true);
         shuangpinKeyHintsEnabled = shuangpinKeyHintsFrom(preferences);
         quanpinShiftEnabled = quanpinShiftFrom(preferences);
         touchKeyStyles = touchKeyStylesFrom(preferences);
@@ -10031,7 +10031,8 @@ public final class MSIMEInputService extends InputMethodService {
                 handwritingDownload.setContentDescription("下载中文手写模型；完成后可离线识别");
                 ViewPolicy.setEnabled(handwritingDownload, true);
                 ViewPolicy.show(handwritingDownload);
-                if (!handwritingDownloading) showHandwritingStatus("首次下载后可离线手写");
+                if (!handwritingDownloading)
+                    showHandwritingStatus("需要下载「中文手写识别模型」，下载一次后可离线手写");
             }
             case DOWNLOADING -> {
                 handwritingCanvas.setAcceptsInk(false);
