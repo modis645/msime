@@ -31,12 +31,15 @@ pub(super) struct Prediction {
     database: Option<PinyinDatabase>,
     /// 联想不给的粗俗词：词库打开时从它的 `sentence_excluded` 表读，没有就是内嵌表，见 `lattice::offensive`。
     offensive: OffensiveWords,
+    /// 上屏后联想要求刚上屏的词至少几个字（`SessionOptions::prediction_min_word_chars`），由会话在 `predict_after_commit` 里读。
+    pub(super) min_word_chars: usize,
 }
 
 impl Prediction {
-    pub fn new(enabled: bool, path: PathBuf) -> Self {
+    pub fn new(enabled: bool, min_word_chars: usize, path: PathBuf) -> Self {
         Self {
             enabled,
+            min_word_chars,
             allowed: true,
             pool: false,
             rows: Vec::new(),
@@ -47,6 +50,7 @@ impl Prediction {
             path,
             database: None,
             offensive: OffensiveWords::default(),
+            min_word_chars,
         }
     }
 
