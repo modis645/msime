@@ -2382,8 +2382,8 @@ pub struct Preferences {
     /// 内部标记，不是设置：这份文档已经按「整句联想默认『增强』」定过一次。`sentence_association.neural_keyboard` 以前默认关，每个字段都序列化，旧文档里的 `false` 分不出「从没动过」和「自己选了『标准』」，所以读到没有这个标记的文档时，词网格开着就把它一次性打开，再标上它（`Preferences::settle_keyboard_reranker_default`）；词网格关着是用户选了「关闭」，不动。之后用户选回「标准」就一直是「标准」。新文档从一开始就带着它（`Default` 为真），缺键时按假读。保存时只会从假变真（`PreferencesStore::save`），恢复默认设置和导入设置文件都不会把它清掉。不在任何设置页上显示。
     #[serde(default, skip_serializing_if = "is_false")]
     pub keyboard_reranker_migrated: bool,
-    /// 向 `https://api.msime.app/v1/telemetry/events` 发送匿名使用报告（每日活跃、会话结束、崩溃摘要；见 `telemetry` 和 PRIVACY.md）。默认关闭：本仓库不上报匿名使用情况，要开必须用户自己在设置里打开；关闭时停止全部上报并清空本地队列。读取方把缺失的键当作关闭。
-    #[serde(default)]
+    /// 向 `https://api.msime.app/v1/telemetry/events` 发送匿名使用报告（每日活跃、会话结束、崩溃摘要；见 `telemetry` 和 PRIVACY.md）。默认开启；关闭后停止全部上报并清空本地队列。读取方把缺失的键当作开启。
+    #[serde(default = "enabled_by_default")]
     pub usage_reporting: bool,
     /// 只属于本机的持续同意历史，由存储在开关保存时维护；提交方不能指定，损坏时不追认旧历史。
     #[serde(
@@ -4645,7 +4645,7 @@ impl Default for Preferences {
             translation_ai: false,
             translation_ai_migrated: true,
             keyboard_reranker_migrated: true,
-            usage_reporting: false,
+            usage_reporting: true,
             usage_reporting_consent: None,
             update_channel: UpdateChannel::Stable,
         }
