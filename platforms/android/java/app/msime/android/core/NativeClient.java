@@ -133,7 +133,10 @@ public final class NativeClient {
     private static void validateMonth(int month) {
         if (month < 1 || month > 12) throw new IllegalArgumentException("Month must be between 1 and 12");
     }
-    /**
+
+    /** 写出当前进程攒着的选词计数、打字统计和个人上下文学习；只能在工作线程调用。 */
+    public static String flushAll() { return TextPolicy.utf8(flushAllRaw()); }
+        /**
      * 背单词: one review action, answered with the whole status. Takes the shared file lock and may
      * read a multi-megabyte wordbook, so call on a worker and never from the input path.
      *
