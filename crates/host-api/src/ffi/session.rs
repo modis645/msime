@@ -307,20 +307,6 @@ pub extern "C" fn msime_client_focus(handle: u64, focused: bool) -> *mut c_char 
     response(|| focus_session(handle, focused))
 }
 
-    }
-}
-
-/// 失焦时在当前线程上写统计。只有 Windows：它的失焦在服务进程的 IPC 线程上。macOS 的失焦在 IMK 主线程、Linux 的在 GLib 主循环、移动宿主的可能在 UI 线程上，而它们的 `record` 在别的线程上跑：在这里写会把整份读写和 fsync 放到主线程，还可能等统计线程手里那次写的 fsync，所以交给后台线程。
-const FLUSHES_TYPING_STATISTICS_INLINE_ON_FOCUS_OUT: bool = cfg!(target_os = "windows");
-
-/// 销毁会话时在当前线程上写统计。桌面宿主销毁会话不频繁，之后进程可能就退出了，后台线程来不及写完；移动宿主（Android 每换一个输入框就销毁重建一次会话，鸿蒙在 ArkTS 里同步销毁）的销毁在 UI 线程上，交给后台线程。
-pub(crate) const FLUSHES_TYPING_STATISTICS_INLINE_ON_DESTROY: bool = !cfg!(any(
-    target_os = "android",
-    target_env = "ohos",
-    target_os = "ios"
-));
-
-/// `msime_client_focus` 的本体。
 pub(crate) fn focus_session(handle: u64, focused: bool) -> Result<Value, String> {
     with_session(handle, |session| {
         // 在换插件表之前采样：换表会刷新打开着的 `/` 列表，这也算这次 focus 的变化。
