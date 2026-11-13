@@ -989,7 +989,6 @@ constexpr jsize kPluginsRequestLimit = 8 * 1024 * 1024;
 constexpr jsize kCommunityLibraryLimit = 4000000;
 constexpr jsize kSkinTrialLimit = 16384;
 constexpr jsize kCommunitySkinInstallLimit = 9000000;
-constexpr jsize kKeySoundPackLimit = 65536;
 constexpr jsize kCommonPhrasesLimit = 4 * 1024 * 1024;
 constexpr jsize kDictionaryCollectionsLimit = 17 * 1024 * 1024;
 constexpr jsize kDiagnosticBundleLimit = 65536;
@@ -1175,9 +1174,6 @@ JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_keyboardSkinTri
 }
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_communitySkinInstallRaw(JNIEnv *env, jclass, jbyteArray request) {
     return bounded_request(env, request, kCommunitySkinInstallLimit, msime_client_community_skin_install);
-}
-JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_keySoundPackRaw(JNIEnv *env, jclass, jbyteArray request) {
-    return bounded_request(env, request, kKeySoundPackLimit, msime_client_key_sound_pack);
 }
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_worldClockRaw(JNIEnv *env, jclass, jbyteArray request) {
     return bounded_request(env, request, 16384, msime_client_world_clock);
