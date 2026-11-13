@@ -260,7 +260,7 @@
       "canonical_pinyin": "mei'gan'xi",
       "source": 8,
       "scheme": "quanpin",
-      "weight": -19780,
+      "weight": -19352,
       "sentence_association": true,
       "sentence_words": [
        "没",
@@ -275,7 +275,7 @@
       "canonical_pinyin": "mei'guan'xi",
       "source": 8,
       "scheme": "quanpin",
-      "weight": 28419,
+      "weight": 28249,
       "corrected_from": "meiganxi",
       "sentence_association": true,
       "sentence_words": [
