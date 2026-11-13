@@ -790,6 +790,8 @@ impl HostSession {
         options.caret_edit_suffix = caret_edit_suffix_applies(&preferences);
         options.learning = preferences.learning && !self.read_only_state;
         options.next_word_prediction = next_word_prediction_applies(&preferences);
+        // 产品层只要两字及以上的词带续写：单字上屏就跳一排联想太吵，引擎默认（1）保留给测试和其他宿主。
+        options.prediction_min_word_chars = 2;
         options.learn_english_on_enter =
             preferences.enter_learns_english_word && !self.read_only_state;
         options.autocorrect_transposition = preferences.quanpin.autocorrect_transposition;
