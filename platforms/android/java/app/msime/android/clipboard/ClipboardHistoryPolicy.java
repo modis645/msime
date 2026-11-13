@@ -16,7 +16,8 @@ package app.msime.android;
  * the system clipboard held any text to offer it in the first place.
  */
 public final class ClipboardHistoryPolicy {
-    public static final int DEFAULT_LIMIT = 50;
+    /** 宿主的产品默认：新装和历史里没有容量字段时按 100 条；核心层的默认仍是 50，档位表两边一致。 */
+    public static final int DEFAULT_LIMIT = 100;
     public static final int[] LIMITS = {50, 100, 200, 500, 1000};
     /** 兼容只需要一个最大值的面板布局代码；实际存储容量来自共享偏好。 */
     public static final int LIMIT = 1000;
