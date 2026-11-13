@@ -216,7 +216,6 @@ public final class HomeActivity extends AppCompatActivity {
     // 首次解包完成也检查一次，避免首次 onResume 早于 runtime-options.json 写入。
     private final FirstRunPreparation.Listener dictionaryPreparation = state -> {
         if (state == FirstRunPreparation.State.READY && !themeWorker.isShutdown()) {
-            themeWorker.execute(() -> DictionaryUpdates.request(getApplicationContext(), "automatic", null));
             requestWubiTableIfWanted();
             requestRerankModelIfWanted();
         }
@@ -244,7 +243,6 @@ public final class HomeActivity extends AppCompatActivity {
             runOnUiThread(this::recreateIfSeasonChanged);
         });
         CloudSync.onResume(this);
-        themeWorker.execute(() -> DictionaryUpdates.request(getApplicationContext(), "automatic", null));
         requestWubiTableIfWanted();
         requestRerankModelIfWanted();
     }
