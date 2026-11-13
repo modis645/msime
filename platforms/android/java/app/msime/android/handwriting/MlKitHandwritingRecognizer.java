@@ -78,15 +78,30 @@ public final class MlKitHandwritingRecognizer implements HandwritingRecognizer {
             availability = Availability.DOWNLOADING;
         }
         listener.onProgress(0);
+        // 下载任务的回调不等于装好了：回读一次模型状态，确实在本地才算成功，
+        // 否则下次进手写又会要求下载（用户在设备上看到过这种「提示成功但装不上」）。
         modelManager.download(model, new DownloadConditions.Builder().build())
-            .addOnSuccessListener(ignored -> {
-                synchronized (lock) {
-                    if (closed || generation != token) return;
-                    availability = Availability.READY;
-                    listener.onProgress(100);
-                    listener.onComplete();
-                }
-            })
+            .addOnSuccessListener(ignored -> modelManager.isModelDownloaded(model)
+                .addOnSuccessListener(downloaded -> {
+                    synchronized (lock) {
+                        if (closed || generation != token) return;
+                        if (!downloaded) {
+                            availability = Availability.DOWNLOAD_REQUIRED;
+                            listener.onFailure();
+                            return;
+                        }
+                        availability = Availability.READY;
+                        listener.onProgress(100);
+                        listener.onComplete();
+                    }
+                })
+                .addOnFailureListener(ignoredCheck -> {
+                    synchronized (lock) {
+                        if (closed || generation != token) return;
+                        availability = Availability.DOWNLOAD_REQUIRED;
+                        listener.onFailure();
+                    }
+                }))
             .addOnFailureListener(ignored -> {
                 synchronized (lock) {
                     if (closed || generation != token) return;
