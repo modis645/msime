@@ -286,7 +286,6 @@ public final class KeyboardFragment extends HomeTabFragment {
     /** 每行副标题上的当前值。 */
     private String value(PageId page, JSONObject preferences, String skin, String scheme) {
         switch (page) {
-            case SKINS: return skin;
             case KEYBOARD_OPTIONS: return keysSummary(preferences, local);
             case TYPING: return scheme;
             case EXPRESSION:
