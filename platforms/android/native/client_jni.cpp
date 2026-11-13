@@ -46,7 +46,6 @@ constexpr jsize kThemeRequestLimit = 1 * 1024 * 1024;
 constexpr jsize kVoiceProviderRequestLimit = 1 * 1024 * 1024;
 // 与 msime_client_voice_endpoint_issue 的传输上限一致，不记录地址。
 constexpr jsize kVoiceEndpointRequestLimit = 65536;
-constexpr jsize kPersonalDictionaryRequestLimit = 2248576;
 constexpr jsize kCreateOptionsLimit = 1 * 1024 * 1024;
 constexpr jsize kMobileClipboardHistoryRequestLimit = 524288;
 // 与 msime_client_cloud_clipboard_e2e 的上限一致：继续一步的请求带着一整页密文响应。
