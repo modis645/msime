@@ -634,7 +634,6 @@ final class ImePanels {
                 }
                 // 选中即换色并收起面板回到键盘，换上的皮肤直接在键盘上看。
                 s.saveKeyboardSkin(choice.id());
-                s.recordSkinStatistics(choice.id());
                 styleSkinPicker(cards);
                 s.closeSkinPicker();
                 s.render();

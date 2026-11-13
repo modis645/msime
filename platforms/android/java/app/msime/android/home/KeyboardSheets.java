@@ -176,13 +176,8 @@ final class KeyboardSheets {
         }
     }
 
-    /** 统计里记下用过这款皮肤（成就用），并告诉云同步皮肤有改动；记不下不影响换皮肤。要在工作线程上调用。 */
+    /** 告诉云同步皮肤有改动；记不下不影响换皮肤。要在工作线程上调用。 */
     static void recordSkin(Context context, String id) {
-        try {
-            HostStore.statisticsAction(context, new JSONObject().put("operation", "record_skin").put("id", id));
-        } catch (JSONException error) {
-            android.util.Log.w("MSIMESettings", "Skin use was not recorded", error);
-        }
         SyncSignals.markDirty(context, SyncSwitch.SKINS);
     }
 

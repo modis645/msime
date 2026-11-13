@@ -42,7 +42,6 @@ final class ImeGridHelpcodeEntry {
                     // 上滑和松手之间组字可能已经变了（光标移进组码、被别的更新上屏）；引擎不收时不给反馈、不计键。
                     if (s.gridHelpcode(GridHelpcodePolicy.BEGIN, (char) 0)) {
                         s.imeKeyFeedback.playFeedback(key);
-                        s.countKey(key);
                     }
                     return true;
                 }

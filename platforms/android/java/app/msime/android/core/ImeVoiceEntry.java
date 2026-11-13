@@ -849,7 +849,6 @@ final class ImeVoiceEntry {
             dismiss();
             return;
         }
-        if (s.imePrivacyGate.recordsVoice()) recordVoice(elapsedMillis);
         s.notice(notice);
         if (holdSpaceButton != null) {
             dismiss();
@@ -862,38 +861,6 @@ final class ImeVoiceEntry {
             }, DONE_NOTICE_MILLIS);
         }
     }
-
-    /** 统计目录：与打字统计相同（偏好目录，没有时是 bootstrap 的状态目录）。 */
-    private String statisticsDirectory() {
-        if (s.preferencesDirectory != null && !s.preferencesDirectory.isEmpty()) return s.preferencesDirectory;
-        File files = s.getFilesDir();
-        return HostOptionsPolicy.bootstrapStateDirectory(files);
-    }
-
-    private void recordVoice(long milliseconds) {
-        String directory = statisticsDirectory();
-        if (directory.isEmpty() || milliseconds <= 0) return;
-        final String request;
-        try {
-            request = new JSONObject().put("directory", directory).put("action", new JSONObject()
-                .put("operation", "record_voice").put("day", LocalDate.now().toString())
-                .put("milliseconds", BoundsPolicy.atMost(milliseconds, 600_000L))).toString();
-        } catch (JSONException error) {
-            return;
-        }
-        try {
-            worker.execute(() -> {
-                try {
-                    NativeClient.typingStatistics(request);
-                } catch (RuntimeException | LinkageError error) {
-                    ImeLog.w("Voice duration not recorded");
-                }
-            });
-        } catch (RejectedExecutionException ignored) {
-            // 键盘正在退出。
-        }
-    }
-
 
     /**
      * 键盘第一次画出来时把本机语音的冷启动成本提前付掉：载入运行库、把模型文件顺序读进页缓存。只在配置了本机模型时做一次，失败不影响任何正常流程。

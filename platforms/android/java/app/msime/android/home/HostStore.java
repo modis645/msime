@@ -10,13 +10,10 @@ import app.msime.android.NativeClient;
 import app.msime.android.PreferencesRevisionPolicy;
 import app.msime.android.SyncSignals;
 import app.msime.android.SyncSwitch;
-import app.msime.android.TypingStatisticsDocument;
-import app.msime.android.TypingStatisticsModel;
 import app.msime.android.policy.HostOptionsPolicy;
 import app.msime.android.core.InputViewValuePolicy;
 import java.io.File;
 import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -179,92 +176,17 @@ public final class HostStore {
     }
 
     /**
-     * Run one typing-statistics action against the same directory the keyboard records into and return the raw `value` of the answer.
-     *
-     * <p>For the operations whose answers are not the statistics document itself (the derived summary, badges and the like). The directory is chosen by {@link #statisticsDirectory} so that the page and the input service never read two different stores. Takes the statistics lock; call it on a worker.
-     *
-     * @param action the action object, e.g. {@code {"operation": "summary", ...}}
-     * @return the envelope's `value`, or null when the store is unavailable or refused the action
-     */
-    @Nullable public static JSONObject statisticsAction(Context context, JSONObject action) {
-        return statisticsValue(context, action);
-    }
-
-    @Nullable public static TypingStatisticsModel loadStatistics(Context context) {
-        return statistics(context, action("load"));
-    }
-
-    @Nullable public static TypingStatisticsModel setStatisticsEnabled(Context context,
-            boolean enabled) {
-        JSONObject action = action("set_enabled");
-        if (action == null) return null;
-        try {
-            action.put("enabled", enabled);
-        } catch (JSONException error) {
-            return null;
-        }
-        return statistics(context, action);
-    }
-
-    /** `forever`, `30d`, `90d`, `180d` or `365d`; the window counts back from the caller's day. */
-    @Nullable public static TypingStatisticsModel setStatisticsRetention(Context context,
-            String retention) {
-        JSONObject action = action("set_retention");
-        if (action == null) return null;
-        try {
-            action.put("retention", retention).put("day", LocalDate.now().toString());
-        } catch (JSONException error) {
-            return null;
-        }
-        return statistics(context, action);
-    }
-
-    @Nullable public static TypingStatisticsModel resetStatistics(Context context) {
-        return statistics(context, action("reset"));
-    }
-
-    /** 背单词的进度和导入的词表放在哪里：与打字统计同一个共享状态目录（{@link #statisticsDirectory}），也是 Tauri 合包里背单词页用的 `files/bootstrap/state`。 */
-    public static String sharedStateDirectory(Context context) {
-        return statisticsDirectory(context);
-    }
-
-    @Nullable private static TypingStatisticsModel statistics(Context context, JSONObject action) {
-        return TypingStatisticsDocument.from(statisticsValue(context, action));
-    }
-
-    /** One statistics request in the shared directory; the envelope's `value`, or null for any failure. */
-    @Nullable private static JSONObject statisticsValue(Context context, @Nullable JSONObject action) {
-        String directory = statisticsDirectory(context);
-        if (directory.isEmpty() || action == null) return null;
-        final String request;
-        try {
-            request = new JSONObject().put("directory", directory).put("action", action).toString();
-        } catch (JSONException error) {
-            return null;
-        }
-        return value(call(() -> NativeClient.typingStatistics(request)));
-    }
-
-    /**
-     * Where the counts are kept.
+     * 背单词的进度和导入的词表放在哪里：与运行时同一个共享状态目录，也是 Tauri 合包里背单词页用的 `files/bootstrap/state`。
      *
      * <p>The input service files them beside the preferences when it has a directory and under the
      * bootstrap state root otherwise, so this reader follows the same order. Reading only one of
      * the two would show an empty page to a profile that has been recording all along.
      */
-    private static String statisticsDirectory(Context context) {
+    public static String sharedStateDirectory(Context context) {
         String preferences = directory(context);
         if (!preferences.isEmpty()) return preferences;
         File files = context.getFilesDir();
         return HostOptionsPolicy.bootstrapStateDirectory(files);
-    }
-
-    @Nullable private static JSONObject action(String operation) {
-        try {
-            return new JSONObject().put("operation", operation);
-        } catch (JSONException error) {
-            return null;
-        }
     }
 
     /** The `value` of a successful shared-host envelope, or null for a failure of any kind. */

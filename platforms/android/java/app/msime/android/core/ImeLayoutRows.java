@@ -688,7 +688,6 @@ final class ImeLayoutRows {
                         + (NineKeyLayout.offersPunctuation(key, false) ? "" : " 或字母"));
                     keyButton.setOnLongClickListener(ignored -> {
                         // 长按只算这格的一次按键，随后选择菜单不重复统计。
-                        s.countKey(keyButton);
                         showNineKeyHoldOptions(keyButton, NineKeyLayout.digitInput(key),
                             NineKeyLayout.offersPunctuation(key, false) ? ""
                                 : key.label().toLowerCase(java.util.Locale.ROOT), true);
@@ -1167,7 +1166,6 @@ final class ImeLayoutRows {
                     cancel.recycle();
                     if (next == NineKeySwipePolicy.Gesture.LETTERS) {
                         // 和长按一样：这一下是这个键的一次按压，之后从弹窗里选的不是另一次按键。
-                        s.countKey(keyButton);
                         showNineKeyHoldOptions(keyButton, NineKeyLayout.digitInput(key),
                             key.label().toLowerCase(java.util.Locale.ROOT), true);
                     } else {
@@ -1197,7 +1195,6 @@ final class ImeLayoutRows {
                         keyButton.setPressed(false);
                         restoreFace.run();
                         s.imeKeyFeedback.playFeedback(keyButton);
-                        s.countKey(keyButton);
                         commitNineKeyLiteral(digit);
                     }
                     return true;
@@ -1668,7 +1665,6 @@ final class ImeLayoutRows {
                     if (direction[0] == 0) button.performClick();
                     else {
                         s.imeKeyFeedback.playFeedback(button);
-                        s.countKey(button);
                         resetJapaneseToggle();
                         selectJapaneseKey(key, direction[0]);
                     }

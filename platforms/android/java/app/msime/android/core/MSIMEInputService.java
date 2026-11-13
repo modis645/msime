@@ -967,20 +967,8 @@ public final class MSIMEInputService extends InputMethodService {
     AiPolishConfiguration replyRequestConfiguration;
     /** 高情商回复面板是否打开。它是工具栏「回复」按钮开关的工具面板，与当前输入方案无关；关闭后回到原来的键盘。 */
     boolean replyOpen;
-    private boolean statisticsFailureReported;
-    /** Key presses since the last write, per key and local day. Main thread only. */
-    private final KeyPressBatch keyPresses = new KeyPressBatch();
-    /** The directory whose committed text the native store may still hold unwritten. Main thread only. */
-    private final PendingTypingStatistics pendingTypingStatistics = new PendingTypingStatistics();
     /** Each soft key's heatmap id. Weak, so the keys of a rebuilt row leave with it. */
     private final java.util.Map<View, String> keyIds = new java.util.WeakHashMap<>();
-    /** The store's statistics switch as last read; until it has been read, nothing is counted. */
-    boolean keyStatisticsEnabled;
-    /** A password or no-learning field, where no key press is counted. */
-    boolean keyStatisticsExcluded = true;
-    private String keyStatisticsDirectory = "";
-    private long keyStatisticsGeneration;
-    private Runnable keyPressFlushTask;
     long editorContextRevision;
     /** 当前输入框的一次快速删除备份，超时或输入上下文变化立即清除。 */
     private QuickDeleteUndo quickDeleteUndo;
@@ -1040,7 +1028,7 @@ public final class MSIMEInputService extends InputMethodService {
     private int inputFailureRecoveryAttempts;
     private Runnable inputViewRefreshTask;
     final ExecutorService preferencesWorker = Executors.newSingleThreadExecutor();
-    private final ExecutorService typingStatisticsWorker = new ThreadPoolExecutor(
+    private final ExecutorService backgroundWorker = new ThreadPoolExecutor(
         1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(32),
         new ThreadPoolExecutor.AbortPolicy());
     /** 表情目录和符号面板里的颜文字、符号目录都在这条线程上读。 */
@@ -1293,7 +1281,6 @@ public final class MSIMEInputService extends InputMethodService {
                 boolean committed = target.commitText(text, 1);
                 if (committed) {
                     selectionEcho.commit(text.length());
-                    recordTypingStatistics(text, source);
                 } else {
                     selectionEcho.invalidate();
                 }
@@ -1394,140 +1381,10 @@ public final class MSIMEInputService extends InputMethodService {
                 ? null : InputViewValuePolicy.textOr(view, "local_mode", null));
     }
 
-    private String typingStatisticsDirectory() {
+    private String sharedStateDirectory() {
         if (!preferencesDirectory.isEmpty()) return preferencesDirectory;
         File files = getFilesDir();
         return files == null ? "" : HostOptionsPolicy.bootstrapStateDirectory(files);
-    }
-
-    private void recordTypingStatistics(String text, TypingSource source) {
-        String directory = typingStatisticsDirectory();
-        if (!ImePrivacyGate.recordsTyping(directory, text)) return;
-        final String request;
-        // One instant for both fields: a day and an hour read separately either side of
-        // midnight would file the commit under one day and the other day's hour.
-        final LocalDateTime instant = LocalDateTime.now();
-        try {
-            request = new JSONObject().put("directory", directory).put("action",
-                new JSONObject().put("operation", "record").put("text", text)
-                    .put("source", source.id()).put("day", instant.toLocalDate().toString())
-                    .put("hour", instant.getHour()))
-                .toString();
-        } catch (JSONException error) {
-            reportTypingStatisticsFailure();
-            return;
-        }
-        String earlier = pendingTypingStatistics.record(directory);
-        if (earlier != null) submitTypingStatisticsFlush(earlier);
-        submitTypingStatistics(request, null, engineStartGeneration);
-    }
-
-    /**
-     * Ask the native store to write the commits it is still holding in memory.
-     *
-     * <p>{@code record} no longer rewrites and fsyncs the whole document per commit: the store keeps the counts and writes them at most every half minute, checked on the next commit. So whatever was typed last waits here until the editor loses focus, the keyboard is hidden or the service goes away. It runs on the statistics worker, after every record already queued there.
-     */
-    private void flushTypingStatistics() {
-        String directory = pendingTypingStatistics.drain();
-        if (directory != null) submitTypingStatisticsFlush(directory);
-    }
-
-    /**
-     * Queue one flush for {@code directory}; its result is ignored. A native library older than the flush operation answers with an error, and it wrote every commit already. When the queue is full the counts stay in the store, which writes them on the next commit after half a minute or before any other request for that directory.
-     */
-    private void submitTypingStatisticsFlush(String directory) {
-        final String request;
-        try {
-            request = new JSONObject().put("directory", directory)
-                .put("action", new JSONObject().put("operation", "flush")).toString();
-        } catch (JSONException error) {
-            return;
-        }
-        try {
-            typingStatisticsWorker.execute(() -> {
-                try {
-                    NativeClient.typingStatistics(request);
-                } catch (RuntimeException | LinkageError ignored) {
-                }
-            });
-        } catch (RuntimeException ignored) {
-        }
-    }
-
-    /**
-     * Send one statistics request on the worker; {@code nothingRecorded}, when given, runs on the main thread if the store took none of a non-empty batch, which is how it answers once statistics are off.
-     */
-    private void submitTypingStatistics(String request, Runnable nothingRecorded,
-                                        long lifecycleGeneration) {
-        try {
-            typingStatisticsWorker.execute(() -> {
-                try {
-                    JSONObject result = new JSONObject(NativeClient.typingStatistics(request));
-                    if (!JsonPolicy.strictTrue(result.opt("ok"))) {
-                        reportTypingStatisticsFailure(lifecycleGeneration);
-                    } else if (nothingRecorded != null) {
-                        JSONObject value = result.getJSONObject("value");
-                        long recorded = NumberPolicy.strictLong(value.opt("recorded"), -1);
-                        if (recorded < 0) throw new JSONException("Invalid recorded count");
-                        if (recorded == 0) main.post(nothingRecorded);
-                    }
-                } catch (Exception | LinkageError error) {
-                    reportTypingStatisticsFailure(lifecycleGeneration);
-                }
-            });
-        } catch (RuntimeException error) {
-            reportTypingStatisticsFailure(lifecycleGeneration);
-        }
-    }
-
-    /**
-     * Where key counts go: the preferences directory the settings page reads them back from, or the bootstrap state root when there is none, in the order HostStore.statisticsDirectory reads them.
-     */
-    private String keyStatisticsDirectory(String preferences) {
-        if (!preferences.isEmpty() && new File(preferences).isAbsolute()) return preferences;
-        File files = getFilesDir();
-        return files == null ? "" : HostOptionsPolicy.bootstrapStateDirectory(files);
-    }
-
-    /**
-     * Decide whether this editor's key presses are counted, and read the statistics switch again.
-     *
-     * <p>The switch lives in the shared store, which the settings app writes from another process, so it is read on the worker when a new editor starts rather than per key. Until the answer arrives nothing is buffered: off is the store's default and the user's choice must hold before anything is kept, even in memory.
-     */
-    private void refreshKeyStatistics(EditorInfo info, boolean restarting, String directory) {
-        keyStatisticsExcluded = ImePrivacyGate.excludesKeyStatistics(info);
-        if (restarting && directory.equals(keyStatisticsDirectory)) return;
-        // Presses already counted belong to the directory they were counted for.
-        flushKeyPresses();
-        keyStatisticsDirectory = directory;
-        long generation = ++keyStatisticsGeneration;
-        // Off until this read answers, so a switch turned off in the settings app holds from the first key of the new editor.
-        disableKeyStatistics();
-        if (directory.isEmpty()) return;
-        try {
-            typingStatisticsWorker.execute(() -> {
-                boolean read;
-                try {
-                    read = NativeClient.typingStatisticsEnabled(directory);
-                } catch (RuntimeException | LinkageError error) {
-                    read = false;
-                }
-                boolean enabled = read;
-                main.post(() -> {
-                    if (generation != keyStatisticsGeneration) return;
-                    if (enabled) keyStatisticsEnabled = true;
-                    else disableKeyStatistics();
-                });
-            });
-        } catch (RuntimeException error) {
-            // The worker is shutting down or full; the switch keeps its last known value.
-        }
-    }
-
-    private void disableKeyStatistics() {
-        keyStatisticsEnabled = false;
-        cancelKeyPressFlush();
-        keyPresses.clear();
     }
 
     /** Tag a soft key with its heatmap id; a key without one is never counted. */
@@ -1536,78 +1393,8 @@ public final class MSIMEInputService extends InputMethodService {
         return key;
     }
 
-    void countKey(View key) { countKey(keyIds.get(key)); }
-
     /** 按键的键位 id（`Backspace`、`Space`、`Enter`…）；没有登记的控件为 null。按键反馈靠它给键分类，不去猜无障碍描述。 */
     String keyIdOf(View key) { return key == null ? null : keyIds.get(key); }
-
-    /**
-     * Count one key press for the heatmap: its id and its local day, nothing else.
-     *
-     * <p>Presses are batched here and written by the worker -- on {@link KeyPressBatch#FLUSH_PRESSES} presses, at the first press of a new day (the old day first, under its own date), when the editor or the keyboard goes away, and otherwise half a minute after the batch opened. The worker's queue is short and every write rewrites the whole document under the file lock, so it never sees a single key.
-     */
-    void countKey(String id) {
-        if (id == null || !imePrivacyGate.countsKeys()) return;
-        KeyPressBatch.Flush previous = keyPresses.add(id, LocalDate.now().toString());
-        if (previous != null) writeKeyPresses(previous);
-        if (keyPresses.full()) {
-            flushKeyPresses();
-        } else if (keyPressFlushTask == null && !keyPresses.isEmpty()) {
-            keyPressFlushTask = () -> {
-                keyPressFlushTask = null;
-                flushKeyPresses();
-            };
-            main.postDelayed(keyPressFlushTask, KEY_PRESS_FLUSH_DELAY_MILLIS);
-        }
-    }
-
-    private void cancelKeyPressFlush() {
-        if (keyPressFlushTask != null) main.removeCallbacks(keyPressFlushTask);
-        keyPressFlushTask = null;
-    }
-
-    private void flushKeyPresses() {
-        cancelKeyPressFlush();
-        KeyPressBatch.Flush flush = keyPresses.drain();
-        if (flush != null) writeKeyPresses(flush);
-    }
-
-    private void writeKeyPresses(KeyPressBatch.Flush flush) {
-        if (keyStatisticsDirectory.isEmpty()) return;
-        final String request;
-        try {
-            JSONObject keys = new JSONObject();
-            for (java.util.Map.Entry<String, Long> entry : flush.keys().entrySet())
-                keys.put(entry.getKey(), entry.getValue().longValue());
-            request = new JSONObject().put("directory", keyStatisticsDirectory).put("action",
-                new JSONObject().put("operation", "record_keys").put("day", flush.day())
-                    .put("keys", keys))
-                .toString();
-        } catch (JSONException error) {
-            reportTypingStatisticsFailure();
-            return;
-        }
-        // A batch is never empty, so nothing taken means statistics were turned off in the settings app while this editor kept focus; stop counting until the next editor reads the switch again. A newer read has the last word, so an answer about an earlier editor is ignored.
-        long generation = keyStatisticsGeneration;
-        submitTypingStatistics(request, () -> {
-            if (generation == keyStatisticsGeneration) disableKeyStatistics();
-        }, engineStartGeneration);
-    }
-
-    private void reportTypingStatisticsFailure() {
-        reportTypingStatisticsFailure(engineStartGeneration);
-    }
-
-    private void reportTypingStatisticsFailure(long lifecycleGeneration) {
-        main.post(() -> {
-            if (!TypingStatisticsLifecyclePolicy.acceptsFailure(
-                    lifecycleGeneration, engineStartGeneration)) return;
-            if (statisticsFailureReported) return;
-            statisticsFailureReported = true;
-            preferencesNotice = " · 打字统计未能写入";
-            render();
-        });
-    }
 
     boolean commitText(String text, TypingSource source) {
         clearQuickDeleteUndo();
@@ -1623,8 +1410,7 @@ public final class MSIMEInputService extends InputMethodService {
         if (committed) {
             selectionEcho.commit(text.length());
             selectionEcho.expect();
-            recordTypingStatistics(text, source);
-        } else {
+            } else {
             selectionEcho.invalidate();
         }
         return committed;
@@ -1750,7 +1536,6 @@ public final class MSIMEInputService extends InputMethodService {
             selectionEcho.commit(0);
         }
         selectionEcho.expect();
-        recordTypingStatistics(closing, source);
         pairedPunctuationStack.push(closing, currentDocumentIdentifier);
         return true;
     }
@@ -1935,7 +1720,6 @@ public final class MSIMEInputService extends InputMethodService {
         imeDebugOverlay.recordEvent(DiagnosticEventKind.IME_START);
         imeDebugOverlay.flushServiceCreate();
         preferencesNotice = "";
-        statisticsFailureReported = false;
         // 外观和引擎是两件事。皮肤、方案角标和键高来自同一份偏好，但它们该跟着用户走，而不是跟着
         // 这个输入框用不用引擎走：密码框和数字框不走引擎，TYPE_NULL 的自定义聊天框仍要走引擎，
         // 否则九键和 26 键会落入「直接输入」而无法组字。
@@ -1977,7 +1761,6 @@ public final class MSIMEInputService extends InputMethodService {
      */
     private void resumeKeptSession(EditorInfo info, boolean restarting) {
         message = "";
-        refreshKeyStatistics(info, restarting, keyStatisticsDirectory);
         // 与 startInputRuntime 相同：同一文档、同一输入类型时这里不改中英，照样经它记下这次输入开始。
         Boolean englishOverride = inputContext.englishOverride(
             EditorPolicy.prefersLatin(editorInputType), currentDocumentIdentifier, dedicatedEnglish);
@@ -2038,7 +1821,6 @@ public final class MSIMEInputService extends InputMethodService {
     private void startInputRuntime(EditorInfo info, boolean restarting, boolean newDocument,
             long startGeneration, boolean engineWanted, boolean allowBootstrap, boolean deferEngine) {
         message = EngineStartupStatusPolicy.initialMessage(engineWanted);
-        String statisticsPreferences = "";
         boolean deferred = deferEngine && engineWanted;
         try {
             if (engineWanted && allowBootstrap
@@ -2053,7 +1835,6 @@ public final class MSIMEInputService extends InputMethodService {
                 pendingRuntimeBootstrap = null;
                 JSONObject options = new JSONObject(
                     HostOptionsPolicy.readRuntimeOptions(getFilesDir()));
-                statisticsPreferences = InputViewValuePolicy.textOr(options, "preferences_directory", "");
                 languageDictionaries = options.optString("language_dictionaries", "");
                 java.util.Set<String> installedPacks = ResourcePacks.installedIds(this);
                 resourcePacks = KeyboardScheme.availablePacks(
@@ -2097,7 +1878,6 @@ public final class MSIMEInputService extends InputMethodService {
             // 会把一个不存在的故障摆到用户面前。
             if (engineWanted) message = "共享运行时未就绪：仅直接输入";
         }
-        refreshKeyStatistics(info, restarting, keyStatisticsDirectory(statisticsPreferences));
         updateAutomaticCapitalization();
         // 推迟建会话的窗口键盘没显示，键行和重画也留给 onStartInputView（resumeDeferredInputStart）。
         editorKeyRowsPending = deferred;
@@ -2215,8 +1995,6 @@ public final class MSIMEInputService extends InputMethodService {
             if (effectiveInfo != null) {
                 editorInputType = effectiveInfo.inputType;
                 allowLearning = EditorPolicy.allowLearning(effectiveInfo.imeOptions);
-                keyStatisticsExcluded = EditorPolicy.excludesKeyStatistics(
-                    effectiveInfo.inputType, effectiveInfo.imeOptions);
             }
             markPrivateSession();
             refreshLocalSettings();
@@ -2235,8 +2013,6 @@ public final class MSIMEInputService extends InputMethodService {
         if (inlineAutofill != null) inlineAutofill.finishInput();
         imeDebugOverlay.recordEvent(DiagnosticEventKind.IME_FINISH);
         cancelPendingCompositionMarkerLoss();
-        flushKeyPresses();
-        flushTypingStatistics();
         clearQuickDeleteUndo();
         imeLetterRows.cancelBackspaceRepeat();
         cancelInputViewRefresh();
@@ -2271,7 +2047,6 @@ public final class MSIMEInputService extends InputMethodService {
         operationNotice.cancel();
         if (inlineAutofill != null) inlineAutofill.finishInput();
         imePanels.dismissClipboardPreview();
-        flushKeyPresses();
         cancelInputViewRefresh();
         // 键盘收起时还在「键盘调整」就照「确认」保存：用户拖到满意后直接收起键盘或切到别的应用，是把这些值留下来的意思。调整界面没有取消，任何离开方式都保存（见 2026-10-08-touch-keyboard-height-reverts）。
         finishKeyboardAdjust();
@@ -2294,7 +2069,6 @@ public final class MSIMEInputService extends InputMethodService {
         firstFrameArmedAt = -1;
         runSessionStartAfterFirstFrame();
         preferencesReloader.stop();
-        flushTypingStatistics();
         super.onWindowHidden();
     }
 
@@ -2449,10 +2223,6 @@ public final class MSIMEInputService extends InputMethodService {
         // 还欠着的快照处理（刚离开输入框还在等空闲的，或被后面的输入框取消、一直没做成的）在关掉工作线程前排进去，与原来失焦即排队时一样不丢这一轮。
         if (dictionarySnapshotBacklog.owed()) scheduleDictionarySnapshotProcessing(true);
         preferencesWorker.shutdown();
-        // Queued before the shutdown, so the worker still writes it.
-        flushKeyPresses();
-        flushTypingStatistics();
-        typingStatisticsWorker.shutdown();
         emojiWorker.shutdown();
         // 已排上的「添加到常用语」照样写完。
         commonPhrasesWorker.shutdown();
@@ -2657,7 +2427,7 @@ public final class MSIMEInputService extends InputMethodService {
     /** Android 的会话销毁不能在输入线程上冲刷所有个人上下文模型；把全局收尾排到统计工作线程。 */
     private void schedulePersonalLearningFlush() {
         try {
-            typingStatisticsWorker.execute(() -> {
+            backgroundWorker.execute(() -> {
                 try { NativeClient.flushAll(); }
                 catch (RuntimeException | LinkageError ignored) { }
             });
@@ -6618,8 +6388,6 @@ public final class MSIMEInputService extends InputMethodService {
 
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
         finishPendingCompositionMarkerLoss();
-        // Every physical press counts once, whoever ends up handling it; the OS's auto-repeat does not.
-        if (event.getRepeatCount() == 0) countKey(KeyPressIds.forKeyCode(keyCode));
         if (event.getRepeatCount() == 0 && physicalKeyboardEvent(event)) noteHardwareTyping();
         if (keyCode == KeyEvent.KEYCODE_BACK && emojiPickerVisible()) {
             closeEmojiPicker();
@@ -6939,10 +6707,6 @@ public final class MSIMEInputService extends InputMethodService {
                 && (newStart != composingEnd || newEnd != composingEnd)) {
             // Don't apply an empty composition over the editor's newly moved selection.
             // 韩语音节已经是最终的韩文并内联标记，下面结束组字区域后它留在文档里，所以算作已输入。注音转换、越南语单词和藏文音节同样是已书写的文字（`commits_on_blur`）；藏文记的是 `editing_text` 里转换后的藏文。
-            if (koreanSchemeActive() || zhuyinSchemeActive())
-                recordTypingStatistics(InputViewValuePolicy.textOr(view, "reading", ""), typingSource());
-            else if (letterCaseSchemeActive())
-                recordTypingStatistics(InputViewValuePolicy.editingText(view), typingSource());
             boolean keepsComposition = !koreanSchemeActive() && writtenCompositionActive();
             try {
                 // 韩语汉字列表打开时第一次取消只关闭列表（msime_client.h），要再取消一次才丢掉编辑器里已作为文字保留的音节。注音的第一次取消只关闭列表，越南语和藏文的只退回原始按键，所以它们留下的组字还要再取消一次。
@@ -7079,7 +6843,6 @@ public final class MSIMEInputService extends InputMethodService {
         imeStyler.styleButton(button, false);
         button.setOnClickListener(ignored -> {
             imeKeyFeedback.playFeedback(button);
-            countKey(button);
             action.run();
         });
         return button;
@@ -7102,7 +6865,6 @@ public final class MSIMEInputService extends InputMethodService {
     <T extends Button> T bindCountedAction(T button, Runnable action) {
         button.setOnClickListener(ignored -> {
             imeKeyFeedback.playFeedback(button);
-            countKey(button);
             action.run();
         });
         return button;
@@ -7909,20 +7671,6 @@ public final class MSIMEInputService extends InputMethodService {
         keySound.put("pack", feedback.soundPack());
     }
 
-    /** 用户在键盘里换了一款皮肤：记进打字统计（徽章「换装达人」），隐私情况下不记。 */
-    void recordSkinStatistics(String id) {
-        String directory = typingStatisticsDirectory();
-        if (id == null || id.isEmpty() || !ImePrivacyGate.recordsTyping(directory, id)) return;
-        final String request;
-        try {
-            request = new JSONObject().put("directory", directory).put("action",
-                new JSONObject().put("operation", "record_skin").put("id", id)).toString();
-        } catch (JSONException error) {
-            return;
-        }
-        submitTypingStatistics(request, null, engineStartGeneration);
-    }
-
     private void finishKeyboardSkinSave(long operation, long targetSession, String targetDirectory,
                                         String response) {
         if (operation != preferenceSaveGeneration || session != targetSession
@@ -7989,7 +7737,6 @@ public final class MSIMEInputService extends InputMethodService {
             if (keyboardLayer != KeyboardLayout.Layer.LETTERS
                     || !SymbolPanelEntryPolicy.opens(connection != null, symbolPanel != null)) return false;
             imeKeyFeedback.playFeedback(button);
-            countKey("SoftSymbol");
             imePanels.showSymbolPanel();
             return true;
         });
@@ -9706,7 +9453,7 @@ public final class MSIMEInputService extends InputMethodService {
      */
     void addCandidateToPersonalWordbook(String text, String translation, String reading) {
         // 与打字统计同一个目录，也就是设置里背单词读的 `HostStore.sharedStateDirectory`。
-        String directory = typingStatisticsDirectory();
+        String directory = sharedStateDirectory();
         if (directory.isEmpty()) {
             notice(PERSONAL_WORDBOOK_FAILURE);
             return;
@@ -9814,7 +9561,6 @@ public final class MSIMEInputService extends InputMethodService {
         button.setOnLongClickListener(ignored -> {
             if (returnHoldInsertsNewline()) {
                 imeKeyFeedback.playFeedback(button);
-                countKey("Enter");
                 selectionEcho.invalidate();
                 InputConnectionGuard.commitText(connection, "\n", 1);
                 return true;
@@ -9823,7 +9569,6 @@ public final class MSIMEInputService extends InputMethodService {
             int action = HardwareTranslationCommitPolicy.returnHold(target.eligible(), target.senses().size());
             if (action == HardwareTranslationCommitPolicy.NONE) return false;
             imeKeyFeedback.playFeedback(button);
-            countKey("Enter");
             performTranslationCommit(action, target);
             return true;
         });
@@ -11046,7 +10791,6 @@ public final class MSIMEInputService extends InputMethodService {
             ToolbarReadinessPolicy.LanguageTap tap = languageTap();
             if (tap == ToolbarReadinessPolicy.LanguageTap.IGNORE) return;
             imeKeyFeedback.playFeedback(languageButton);
-            countKey(languageButton);
             switch (tap) {
                 case ENGINE -> {
                     // 会话建好、偏好还没读到时记着的那一下作废：这一下已经照常切了，读到偏好时不能再补按一次。
@@ -11091,7 +10835,6 @@ public final class MSIMEInputService extends InputMethodService {
         quickPunctuationButton.setOnLongClickListener(ignored -> {
             if (commaSecondaryPeriod() || handwritingMarksShown()) {
                 imeKeyFeedback.playFeedback(quickPunctuationButton);
-                countKey(quickPunctuationButton);
                 if (uriPeriodPrimary()) type(',');
                 else type(commaSecondaryPeriod() ? '.' : '?');
             } else showQuickPunctuationMenu();

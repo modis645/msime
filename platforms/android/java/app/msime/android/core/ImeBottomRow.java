@@ -79,7 +79,6 @@ final class ImeBottomRow {
                 case MotionEvent.ACTION_UP -> {
                     if (!swiped[0]) return false;
                     s.imeKeyFeedback.playFeedback(button);
-                    s.countKey(button);
                     s.type('.');
                     swiped[0] = false;
                     return true;
@@ -433,7 +432,6 @@ final class ImeBottomRow {
                     button.setPressed(false);
                     if (copyGesture) {
                         resetSpaceCursor();
-                        s.countKey(button);
                         if (outcome == SpaceGesturePolicy.Outcome.COPY && copyTarget == s.connection)
                             s.imeTextEditPanel.copyAllFromGesture();
                         return true;
@@ -446,7 +444,6 @@ final class ImeBottomRow {
                         startVoice.run();
                     }
                     if (voiced[0]) {
-                        s.countKey(button);
                         if (holding[0]) {
                             holding[0] = false;
                             s.imeVoiceEntry.releaseHold(event.getRawX(), event.getRawY(), false);
@@ -455,7 +452,6 @@ final class ImeBottomRow {
                     }
                     if (dragging[0] || cancelled[0]) {
                         // The thumb still pressed the space bar; dragging it moved the cursor instead of typing.
-                        s.countKey(button);
                         resetSpaceCursor();
                     } else button.performClick();
                     return true;
@@ -540,7 +536,6 @@ final class ImeBottomRow {
             period.setOnLongClickListener(ignored -> {
                 if (!s.handwritingMarksShown()) return false;
                 s.imeKeyFeedback.playFeedback(period);
-                s.countKey(period);
                 s.type('!');
                 return true;
             });

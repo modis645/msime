@@ -334,7 +334,6 @@ final class ImeLetterRows {
                     s.imeTouchPoints.pending.forget(key);
                     if (optionsShown[0] && s.imeLayoutRows.finishLetterOptions(key, event)) return true;
                     s.imeKeyFeedback.playFeedback(key);
-                    s.countKey(key);
                     if (!optionsShown[0]) s.imeLayoutRows.commitLetterHint(input);
                     return true;
                 }
@@ -1247,7 +1246,6 @@ final class ImeLetterRows {
                         case SYMBOL -> {
                             cancelKeyTouch(key, event);
                             s.imeKeyFeedback.playFeedback(key);
-                            s.countKey(key);
                             s.imeLayoutRows.commitGridLetterHint(hint);
                         }
                         case LETTER -> {
@@ -1255,7 +1253,6 @@ final class ImeLetterRows {
                             char selected = current.selected();
                             if (selected != 0) {
                                 s.imeKeyFeedback.playFeedback(key);
-                                s.countKey(key);
                                 s.gridKey(selected);
                             }
                         }
@@ -1264,7 +1261,6 @@ final class ImeLetterRows {
                             if (s.imeLayoutRows.finishLetterOptions(key, event)) return true;
                             // 没拖进选项：弹窗留着等点选，这一下算这个键的一次按压。
                             s.imeKeyFeedback.playFeedback(key);
-                            s.countKey(key);
                         }
                         case CANCELLED -> key.setPressed(false);
                     }
@@ -1599,7 +1595,6 @@ final class ImeLetterRows {
                     swiped[0] = false;
                     key.setPressed(false);
                     s.imeKeyFeedback.playFeedback(key);
-                    s.countKey(key);
                     s.imeLayoutRows.commitNineKeyLiteral(SuperscriptShortcutPolicy.ZERO);
                     return true;
                 }

@@ -355,7 +355,6 @@ final class ImeTextEditPanel {
                         if (!claimed) return false;
                         claimed = false;
                         s.imeKeyFeedback.playFeedback(view);
-                        s.countKey(view);
                         perform(swipeAction);
                         return true;
                     }
