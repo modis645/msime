@@ -46,8 +46,6 @@ constexpr jsize kThemeRequestLimit = 1 * 1024 * 1024;
 constexpr jsize kVoiceProviderRequestLimit = 1 * 1024 * 1024;
 // 与 msime_client_voice_endpoint_issue 的传输上限一致，不记录地址。
 constexpr jsize kVoiceEndpointRequestLimit = 65536;
-constexpr jsize kTypingStatisticsRequestLimit = 65536;
-constexpr jsize kTypingStatisticsDirectoryLimit = 16384;
 constexpr jsize kPersonalDictionaryRequestLimit = 2248576;
 constexpr jsize kCreateOptionsLimit = 1 * 1024 * 1024;
 constexpr jsize kMobileClipboardHistoryRequestLimit = 524288;
@@ -200,21 +198,6 @@ JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_skinPackageRaw(
 }
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_skinResourceRaw(JNIEnv *env, jclass, jbyteArray request) {
     return json_call(env, request, msime_client_skin_resource);
-}
-JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_typingStatisticsRaw(JNIEnv *env, jclass, jbyteArray request) {
-    return bounded_request(env, request, kTypingStatisticsRequestLimit, msime_client_typing_statistics);
-}
-// 1 enabled, 0 disabled or missing, -1 invalid directory or unreadable document; the Java side treats anything but 1 as off.
-JNIEXPORT jint JNICALL Java_app_msime_android_NativeClient_typingStatisticsEnabledRaw(JNIEnv *env, jclass, jbyteArray directory) {
-    if (!directory) return -1;
-    jsize length = env->GetArrayLength(directory);
-    if (length > kTypingStatisticsDirectoryLimit) return -1;
-    jbyte *bytes = env->GetByteArrayElements(directory, nullptr);
-    if (!bytes) return -1;
-    int32_t result = msime_client_typing_statistics_enabled(
-        reinterpret_cast<const uint8_t *>(bytes), static_cast<size_t>(length));
-    env->ReleaseByteArrayElements(directory, bytes, JNI_ABORT);
-    return static_cast<jint>(result);
 }
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_vocabularyReviewRaw(JNIEnv *env, jclass, jbyteArray request) {
     return bounded_request(env, request, kVocabularyReviewRequestLimit,

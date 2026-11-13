@@ -38,9 +38,7 @@ use msime_client_providers::voice::doubao_frame::{
     audio_frame, decode_error_code, decode_json_frame, start_frame,
 };
 use msime_client_providers::voice::VoiceSessionState;
-use msime_client_services::typing_statistics::{
-    CommitEfficiency, TypingSource, TypingStatisticsStore, RANKS,
-};
+use msime_client_services::typing_statistics::{CommitEfficiency, TypingStatisticsStore, RANKS};
 use msime_engine::host::{
     check_nine_key_shuangpin_table, check_shuangpin_custom_profile,
     nine_key_shuangpin_builtin_table, nine_key_shuangpin_table_key_hints, release_gloss_caches,
