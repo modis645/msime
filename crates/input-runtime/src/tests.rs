@@ -5528,6 +5528,7 @@ fn real_engine_options(root: &std::path::Path) -> msime_engine::host::EngineOpti
         learning: false,
         learn_english_on_enter: true,
         next_word_prediction: false,
+        prediction_min_word_chars: None,
         autocorrect_transposition: true,
         autocorrect_neighbor: true,
         fuzzy_pinyin_rules: 0,
