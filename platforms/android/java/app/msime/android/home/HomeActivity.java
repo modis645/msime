@@ -244,8 +244,6 @@ public final class HomeActivity extends AppCompatActivity {
             runOnUiThread(this::recreateIfSeasonChanged);
         });
         CloudSync.onResume(this);
-        // 打开了「上传到云端」时补传打字统计；十分钟的节流在共享层，没登录真实账号时什么都不发。
-        TypingUpload.onResume(this);
         themeWorker.execute(() -> DictionaryUpdates.request(getApplicationContext(), "automatic", null));
         requestWubiTableIfWanted();
         requestRerankModelIfWanted();
@@ -697,7 +695,6 @@ public final class HomeActivity extends AppCompatActivity {
             communityKind = null;
             return DetailPage.asTabRoot(page);
         }
-        if (itemId == R.id.tab_statistics) return new StatisticsFragment();
         if (itemId == R.id.tab_account) return new AccountFragment();
         return new KeyboardFragment();
     }

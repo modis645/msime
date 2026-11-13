@@ -12,14 +12,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * 「上传到云端」和「绑定 QQ 群助手」用到的账号接口：`PUT` / `DELETE /v1/users/me/typing-statistics`，以及 `GET` / `POST /v1/users/me/qq-links` 和 `DELETE /v1/users/me/qq-links/{id}`。
- *
- * <p>上传的请求体不在这里拼：共享层 `msime_client_typing_statistics` 的 `upload_request` 读本机统计、组好请求体、管设备标识和十分钟节流，这里只负责带着真实账号的令牌发出去（匿名账号不上传、不绑定）。错误说法与共享设置页（`typing-statistics-upload.tsx`、`qq-link-card.tsx`）一致。
+ * 「绑定 QQ 群助手」用到的账号接口：`GET` / `POST /v1/users/me/qq-links` 和 `DELETE /v1/users/me/qq-links/{id}`，都带真实账号的令牌（匿名账号不绑定）。错误说法与共享设置页（`qq-link-card.tsx`）一致。
  *
  * <p>本类不 import `androidx`、`R` 或 `home/`，check-host 会编译它；请求阻塞在网络上，不要在主线程调用。
  */
 public final class TypingUploadApi {
-    public static final String STATISTICS_PATH = "/v1/users/me/typing-statistics";
     public static final String LINKS_PATH = "/v1/users/me/qq-links";
     /** 服务端的绑定码是 8 位数字。 */
     public static final int CODE_DIGITS = 8;
@@ -33,17 +30,6 @@ public final class TypingUploadApi {
 
     public TypingUploadApi(CloudApi api) {
         this.api = api;
-    }
-
-    /** 把共享层给的请求体发出去，服务端回 204。`path` 必须是共享层交回的那一个，别的路径一律拒绝。 */
-    public void upload(String path, JSONObject body) throws CloudApi.Failure {
-        if (!STATISTICS_PATH.equals(path) || body == null) throw new IllegalArgumentException("unexpected upload request");
-        api.send("PUT", path, CloudApi.Body.json(body), CloudApi.Auth.ACCOUNT);
-    }
-
-    /** 删除这个账号在云端的全部打字统计；没有数据也是 204。 */
-    public void deleteAll() throws CloudApi.Failure {
-        api.send("DELETE", STATISTICS_PATH, null, CloudApi.Auth.ACCOUNT);
     }
 
     /** 本人的绑定，新的在前。 */
@@ -112,11 +98,6 @@ public final class TypingUploadApi {
         return digits.length() == CODE_DIGITS ? digits.toString() : null;
     }
 
-    /** 上次上传的时间（毫秒）按本机时区显示成「2026-10-17 12:34」。 */
-    public static String displayMillis(long millis, ZoneId zone) {
-        return Instant.ofEpochMilli(millis).atZone(zone).format(LINK_TIME);
-    }
-
     /** 绑定时间按本机时区显示成「2026-10-17 12:34」；读不懂时原样返回。 */
     public static String displayTime(String createdAt, ZoneId zone) {
         try {
@@ -137,23 +118,6 @@ public final class TypingUploadApi {
         }
         if (failure.rateLimited()) return "尝试次数太多，请一小时后再试。";
         return generalMessage(failure);
-    }
-
-    /**
-     * 打开上传并立刻上传一次之后的说法，对应共享设置页的 `uploadChangedMessage`。本机统计里还没有字数的日子时共享层什么都不发，上次上传的时间（`lastUploadMs`）仍然为 null，服务端也还不认识这台设备，这时不能说已经传上去了。App 只在回到前台和打开打字统计页时上传，所以说的是打字以后再打开 App。
-     */
-    public static String enabledMessage(Long lastUploadMs) {
-        return lastUploadMs == null
-            ? "已打开上传。本机还没有可上传的打字计数，用水杉键盘打字以后再打开 App 会自动上传。"
-            : "已打开上传，最近 7 天的每日计数已传到你的水杉账号。";
-    }
-
-    /** 上传、删除失败时的说法，与共享设置页的 `uploadErrorMessage` 相同；`enabling` 是这次是在打开还是关闭。 */
-    public static String uploadMessage(CloudApi.Failure failure, boolean enabling) {
-        if (failure.signedOut()) return "先在「我的」页登录水杉账号，再打开上传。";
-        if (failure.rateLimited()) return "上传过于频繁，过一会儿会自动再传。";
-        return enabling ? "已打开上传，但这次没有传上去，稍后会自动再试。"
-            : "已关闭上传，但云端的数据没有删掉，请联网后打开再关闭一次。";
     }
 
     /** 列表和解绑失败时的说法。 */

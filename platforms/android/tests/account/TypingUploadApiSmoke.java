@@ -21,7 +21,6 @@ public final class TypingUploadApiSmoke {
         check("2026-10-17 12:34".equals(TypingUploadApi.displayTime("2026-10-17T03:34:56Z", tokyo)), "UTC to local");
         check("2026-10-17 12:34".equals(TypingUploadApi.displayTime("2026-10-17T11:34:56+08:00", tokyo)), "offset to local");
         check("昨天".equals(TypingUploadApi.displayTime("昨天", tokyo)), "unreadable time is kept");
-        check("2026-10-17 12:34".equals(TypingUploadApi.displayMillis(1_792_208_096_000L, tokyo)), "upload millis to local");
 
         // 错误说法与共享设置页相同。
         check(TypingUploadApi.linkMessage(failure(404, "qq_link_code_not_found")).startsWith("绑定码不对或已过期"), "expired code");
@@ -29,12 +28,6 @@ public final class TypingUploadApiSmoke {
         check(TypingUploadApi.linkMessage(failure(400, "invalid_qq_link_code")).startsWith("绑定码是 8 位数字"), "invalid code");
         check(TypingUploadApi.linkMessage(failure(429, "rate_limit_exceeded")).startsWith("尝试次数太多"), "rate limited");
         check(TypingUploadApi.linkMessage(failure(0, "network")).startsWith("连不上服务器"), "network");
-        // 打开后共享层没有可传的日子时，上次上传的时间仍为 null，不能说已经传上去了。
-        check(TypingUploadApi.enabledMessage(null).startsWith("已打开上传。本机还没有可上传的打字计数"), "nothing uploaded yet");
-        check(TypingUploadApi.enabledMessage(1_792_208_096_000L).startsWith("已打开上传，最近 7 天的每日计数已传到"), "uploaded");
-        check(TypingUploadApi.uploadMessage(failure(401, "invalid_credentials"), true).startsWith("先在「我的」页登录"), "signed out");
-        check(TypingUploadApi.uploadMessage(failure(0, "network"), true).startsWith("已打开上传，但这次没有传上去"), "enable failed");
-        check(TypingUploadApi.uploadMessage(failure(503, "auth_unavailable"), false).startsWith("已关闭上传，但云端的数据没有删掉"), "delete failed");
         check(TypingUploadApi.generalMessage(failure(404, "")).startsWith("这项服务暂时不可用"), "old server");
 
         // 删除走真实账号的令牌、固定路径；绑定码不合规时不联网。
@@ -44,10 +37,9 @@ public final class TypingUploadApiSmoke {
             return new CloudApi.Exchange(204, null, null, new byte[0]);
         }, rejected -> "a".repeat(64), rejected -> "b".repeat(64));
         TypingUploadApi upload = new TypingUploadApi(api);
-        upload.deleteAll();
         upload.remove("42");
-        check(seen.equals(List.of("DELETE /v1/users/me/typing-statistics Bearer " + "a".repeat(64),
-            "DELETE /v1/users/me/qq-links/42 Bearer " + "a".repeat(64))), "delete paths and account token: " + seen);
+        check(seen.equals(List.of("DELETE /v1/users/me/qq-links/42 Bearer " + "a".repeat(64))),
+            "delete paths and account token: " + seen);
         try {
             upload.redeem("1234");
             throw new AssertionError("a short code was sent");
@@ -62,13 +54,7 @@ public final class TypingUploadApiSmoke {
                 // 编号不合规时不拼进路径。
             }
         }
-        try {
-            upload.upload("/v1/users/me/phrases", null);
-            throw new AssertionError("an unexpected upload path was sent");
-        } catch (IllegalArgumentException expected) {
-            // 只发共享层交回的那个路径。
-        }
-        check(seen.size() == 2, "nothing else reached the network");
+        check(seen.size() == 1, "nothing else reached the network");
         System.out.println("Android typing upload API: paths, bind codes, times and messages passed");
     }
 
