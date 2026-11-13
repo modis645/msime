@@ -427,10 +427,6 @@ public final class NativeClient {
     /** The app notices feed (cached for a minute, dismissed ones left out). Blocks on the network: call on a worker, from the app, never from the input method. */
     public static String notices(String request) { return TextPolicy.utf8(noticesRaw(request.getBytes(StandardCharsets.UTF_8))); }
     public static String noticeDismiss(String request) { return TextPolicy.utf8(noticeDismissRaw(request.getBytes(StandardCharsets.UTF_8))); }
-    /** Applies a bounded batch of queued personal dictionary edits. Call with no active session. */
-    public static String personalDictionarySync(String options) {
-        return TextPolicy.utf8(personalDictionarySyncRaw(options.getBytes(StandardCharsets.UTF_8)));
-    }
     public static String focus(long session, boolean focused) { return TextPolicy.utf8(focusRaw(session, focused)); }
     /** 标出隐私会话：选词位置和上屏效率不记入打字统计。 */
     public static String setPrivateSession(long session, boolean enabled) {
@@ -1146,7 +1142,6 @@ public final class NativeClient {
     private static native byte[] shuangpinKeyHintsRaw(byte[] profile);
     private static native byte[] nineKeyShuangpinLayoutRaw(byte[] request);
     private static native byte[] savePreferencesRaw(byte[] directory, long expectedRevision, byte[] snapshot);
-    private static native byte[] personalDictionarySyncRaw(byte[] options);
     private static native byte[] focusRaw(long session, boolean focused);
     private static native byte[] setNineKeyModeRaw(long session, boolean enabled);
     private static native byte[] setKeyGridRaw(long session, int grid);

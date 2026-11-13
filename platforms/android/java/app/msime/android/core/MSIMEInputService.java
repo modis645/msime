@@ -2540,24 +2540,13 @@ public final class MSIMEInputService extends InputMethodService {
                 long preferencesMillis = SystemClock.uptimeMillis() - preferencesStartedAt;
                 if (generation != engineStartGeneration) return;
                 String notice = "";
-                long syncStartedAt = SystemClock.uptimeMillis();
-                try {
-                    JSONObject sync = value(NativeClient.personalDictionarySync(options));
-                    if (sync.optString("snapshot_error", "").length() > 0) {
-                        notice = " · 个人词库同步稍后重试";
-                    }
-                    // 刚处理完的这批腾出了队列，把导入词库的下一批送进去，键盘收起后的空闲同步会接着写完。
-                    DictionaryCollectionsStore.flushSent(this);
-                } catch (Exception | LinkageError ignored) {
-                    // Personal dictionary maintenance is optional; session startup continues.
-                }
-                long syncMillis = SystemClock.uptimeMillis() - syncStartedAt;
+                // 刚处理完的这批腾出了队列，把导入词库的下一批送进去，键盘收起后的空闲同步会接着写完。
+                DictionaryCollectionsStore.flushSent(this);
                 if (generation != engineStartGeneration) return;
                 String finalNotice = notice;
                 main.post(() -> {
                     if (generation != engineStartGeneration || connection == null || session != 0) return;
                     imeDebugOverlay.recordPerf(DiagnosticEventKind.ENGINE_STARTUP_PREFERENCES, preferencesMillis);
-                    imeDebugOverlay.recordPerf(DiagnosticEventKind.ENGINE_STARTUP_DICTIONARY_SYNC, syncMillis);
                     if (!finalNotice.isEmpty()) preferencesNotice = finalNotice;
                     startEngineSessionAfterFirstFrame(() -> {
                         if (generation != engineStartGeneration || connection == null || session != 0) return;
