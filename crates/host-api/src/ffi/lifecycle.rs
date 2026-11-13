@@ -48,9 +48,6 @@ pub(crate) fn destroy_session(handle: u64) -> Result<Value, String> {
             .ok_or("unknown session or wrong thread")?;
         // 还在组字时先发 composition_end{Destroyed}；是音乐所有者时关掉音乐。
         session.lifecycle_destroy();
-        // A host may tear a session down without a focus-out first; what it counted is still written.
-        // 宿主经 `record` 攒在本进程里的上屏也在这里写出：销毁会话是收尾，之后进程可能就退出了。移动宿主在 UI 线程上销毁，交给后台线程写。
-        );
         // 引擎会话销毁时会写下本日志的延迟上下文学习。桌面宿主可能马上退出，所以仍在这里
         // 冲刷进程里的其他日志；Android 把进程级冲刷排到输入法工作线程，导航不再等待 UI
         // 线程上的磁盘写入。
