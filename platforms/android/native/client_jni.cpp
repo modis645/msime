@@ -457,6 +457,8 @@ JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_savePreferences
     env->ReleaseByteArrayElements(snapshot, snapshot_bytes, JNI_ABORT);
     env->ReleaseByteArrayElements(directory, directory_bytes, JNI_ABORT);
     return response(env, result);
+}
+
 JNIEXPORT jbyteArray JNICALL Java_app_msime_android_NativeClient_prepareHostRaw(JNIEnv *env, jclass, jbyteArray options) {
     return bounded_request(env, options, kPrepareHostRequestLimit, msime_client_prepare_host);
 }
