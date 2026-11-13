@@ -96,12 +96,12 @@ fn choosing_a_suffix_word_consumes_its_syllables_and_keeps_editing_the_rest() {
     assert!(!snapshot.caret_edit_suffix);
     assert!(snapshot.caret_edit_prefix.is_empty());
 
-    // 首选：固定的部分已经交出去，只剩「锅」。
+    // 首选：固定的部分已经交出去，只剩一个「guo」候选；切分按本 fork 的默认值调整后首选是「国」。
     let mut session = suffix_session(&fixture);
     at_caret(&mut session, TYPED, AFTER_XIAN);
     select_word(&mut session, "吃货");
     let done = session.select(0);
-    assert_eq!(done.commit.as_deref(), Some("锅"));
+    assert_eq!(done.commit.as_deref(), Some("国"));
     assert!(session.snapshot().editing_text.is_empty());
 }
 
