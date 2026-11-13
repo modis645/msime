@@ -1,5 +1,4 @@
 use super::*;
-use crate::community::resource::{CommunityResourceContent, SharedPhrase};
 use std::fs;
 use std::process::Command;
 
@@ -12,12 +11,12 @@ fn fresh() -> (tempfile::TempDir, CommonPhrasesStore) {
 #[test]
 fn categories_keep_old_documents_and_default_expansion() {
     let old: CommonPhrases =
-        serde_json::from_value(serde_json::json!({"phrases": [], "packs": []})).unwrap();
+        serde_json::from_value(serde_json::json!({"phrases": []})).unwrap();
     assert!(old.categories.is_empty());
     assert_eq!(old.expanded_category, "all");
     assert_eq!(
         serde_json::to_value(old).unwrap(),
-        serde_json::json!({"phrases": [], "packs": []})
+        serde_json::json!({"phrases": []})
     );
 }
 
@@ -214,34 +213,6 @@ fn category_backup_adopts_default_on_empty_device_and_rejects_partial_imports() 
     assert_eq!(store.load().unwrap(), full);
 }
 
-fn pack(id: u128, revision: u32, texts: &[&str]) -> CommunityResource {
-    CommunityResource {
-        id: Uuid::from_u128(id),
-        kind: CommunityResourceKind::Phrase,
-        name: "邮件签名".into(),
-        description: "示例短语包".into(),
-        author: "示例作者".into(),
-        content: CommunityResourceContent {
-            phrases: texts
-                .iter()
-                .map(|text| SharedPhrase {
-                    text: (*text).into(),
-                    group: String::new(),
-                })
-                .collect(),
-            ..Default::default()
-        },
-        revision,
-        saves: 0,
-        saved: false,
-        owned: false,
-        rating_count: 0,
-        rating_average: 0.0,
-        my_rating: 0,
-        moderation: None,
-    }
-}
-
 fn texts(document: &CommonPhrases) -> Vec<&str> {
     document
         .phrases
@@ -278,12 +249,13 @@ fn common_phrases_start_empty_and_keep_multiline_text() {
     assert_eq!(store.load().unwrap(), CommonPhrases::default());
     let document = store.add("此致\n敬礼").unwrap();
     assert_eq!(texts(&document), ["此致\n敬礼"]);
-    assert_eq!(document.phrases[0].pack, None);
+    assert_eq!(document.phrases[0].text, "此致\n敬礼");
     assert_eq!(store.load().unwrap(), document);
-    // 文件里 `pack` 明确写成 null，和契约的模型一致。
+    // 文件里只有条目本身，没有包或来源字段。
     let raw: serde_json::Value = serde_json::from_slice(&fs::read(&store.file).unwrap()).unwrap();
-    assert_eq!(raw["phrases"][0]["pack"], serde_json::Value::Null);
-    assert_eq!(raw["packs"], serde_json::json!([]));
+    assert_eq!(raw["phrases"][0]["text"], "此致\n敬礼");
+    assert!(raw.get("packs").is_none());
+    assert!(raw["phrases"][0].get("pack").is_none());
 }
 
 #[test]
@@ -319,9 +291,6 @@ fn common_phrases_refuse_more_than_two_hundred_own_entries() {
         store.add("再多一条"),
         Err(CommonPhrasesError::Limit)
     ));
-    // 短语包的条目不占自己添加的名额。
-    let document = store.install_pack(&pack(1, 1, &["包里的一条"])).unwrap();
-    assert_eq!(document.document.phrases.len(), MAX_OWN_PHRASES + 1);
 }
 
 #[test]
@@ -337,12 +306,7 @@ fn common_phrases_deduplicate_within_one_source_only() {
         store.replace(other, "您好"),
         Err(CommonPhrasesError::Duplicate)
     ));
-    // 包里与自己的某条相同的文本照样收下，包内重复的只留一条。
-    let outcome = store
-        .install_pack(&pack(1, 1, &["您好", "再见", "再见"]))
-        .unwrap();
-    assert_eq!(texts(&outcome.document), ["您好", "谢谢", "您好", "再见"]);
-    assert_eq!(outcome.skipped, 1);
+    assert_eq!(texts(&store.load().unwrap()), ["您好", "谢谢"]);
 }
 
 #[test]
@@ -379,119 +343,17 @@ fn common_phrases_replace_remove_and_move_by_id() {
 }
 
 #[test]
-fn common_phrases_pack_install_update_and_removal_take_their_entries_along() {
-    let (_root, store) = fresh();
-    store.add("自己的").unwrap();
-    let outcome = store
-        .install_pack(&pack(1, 1, &["第一条", "第二\r\n行"]))
-        .unwrap();
-    assert_eq!(outcome.skipped, 0);
-    assert_eq!(texts(&outcome.document), ["自己的", "第一条", "第二\n行"]);
-    assert_eq!(
-        outcome.document.packs,
-        [CommonPhrasePack {
-            id: Uuid::from_u128(1),
-            name: "邮件签名".into(),
-            revision: 1,
-        }]
-    );
-    store.add("后来加的").unwrap();
-    store.install_pack(&pack(2, 1, &["另一个包"])).unwrap();
-
-    // 更新同一个包：条目整体替换，位置不变，版本跟着变。
-    let outcome = store.install_pack(&pack(1, 3, &["新的一条"])).unwrap();
-    assert_eq!(
-        texts(&outcome.document),
-        ["自己的", "新的一条", "后来加的", "另一个包"]
-    );
-    assert_eq!(outcome.document.packs[0].revision, 3);
-    assert_eq!(outcome.document.packs.len(), 2);
-
-    // 删除包时连带删除来自它的条目，别的来源不动。
-    let document = store.remove_pack(Uuid::from_u128(1)).unwrap();
-    assert_eq!(texts(&document), ["自己的", "后来加的", "另一个包"]);
-    assert_eq!(document.packs.len(), 1);
-    assert!(matches!(
-        store.remove_pack(Uuid::from_u128(1)),
-        Err(CommonPhrasesError::NotFound)
-    ));
-}
-
-#[test]
-fn common_phrases_pack_limits_and_kind_are_enforced() {
-    let (_root, store) = fresh();
-    for index in 0..MAX_PACKS {
-        store
-            .install_pack(&pack(index as u128 + 1, 1, &["短语"]))
-            .unwrap();
-    }
-    assert!(matches!(
-        store.install_pack(&pack(100, 1, &["短语"])),
-        Err(CommonPhrasesError::Limit)
-    ));
-    // 已安装的包可以更新，不受个数上限影响。
-    store.install_pack(&pack(1, 2, &["更新"])).unwrap();
-
-    let (_root, store) = fresh();
-    let mut reply = pack(1, 1, &["短语"]);
-    reply.kind = CommunityResourceKind::Reply;
-    assert!(matches!(
-        store.install_pack(&reply),
-        Err(CommonPhrasesError::Invalid)
-    ));
-    // 服务端允许 2000 个 UTF-16 单元，本地只收 1000 以内的；一条都收不下就拒绝。
-    let long = "字".repeat(MAX_PHRASE_UTF16 + 1);
-    let outcome = store.install_pack(&pack(1, 1, &[&long, "短的"])).unwrap();
-    assert_eq!(outcome.skipped, 1);
-    assert_eq!(texts(&outcome.document), ["短的"]);
-    assert!(matches!(
-        store.install_pack(&pack(2, 1, &[&long])),
-        Err(CommonPhrasesError::Invalid)
-    ));
-    let full: Vec<String> = (0..MAX_PACK_PHRASES)
-        .map(|index| index.to_string())
-        .collect();
-    let refs: Vec<&str> = full.iter().map(String::as_str).collect();
-    let outcome = store.install_pack(&pack(3, 1, &refs)).unwrap();
-    assert_eq!(outcome.skipped, 0);
-}
-
-#[test]
-fn invalid_local_pack_phrases_do_not_reserve_normalization_capacity() {
-    let long = "字".repeat(MAX_PHRASE_UTF16 + 1);
-    let resource = pack(1, 1, &[&long]);
-
-    let (normalized, skipped) = super::normalized_pack_texts(&resource);
-
-    assert!(normalized.is_empty());
-    assert_eq!(normalized.capacity(), 0);
-    assert_eq!(skipped, 1);
-}
-
-#[test]
 fn common_phrases_file_size_is_bounded() {
     let (_root, store) = fresh();
-    // 每条正好 1000 个 UTF-16 单元、约 3 KB；自己的 200 条加上几个满包，总会超过 2 MB。
+    // 每条接近 1000 个 UTF-16 单元、约 3 KB；写满 200 条之后文件仍然远低于 2 MB，再写一条被条数上限挡下。
     let body = "字".repeat(MAX_PHRASE_UTF16 - 4);
     for index in 0..MAX_OWN_PHRASES {
         store.add(&format!("{index:04}{body}")).unwrap();
     }
-    let mut refused = false;
-    for pack_index in 0..MAX_PACKS {
-        let texts: Vec<String> = (0..MAX_PACK_PHRASES)
-            .map(|index| format!("{index:04}{body}"))
-            .collect();
-        let refs: Vec<&str> = texts.iter().map(String::as_str).collect();
-        match store.install_pack(&pack(pack_index as u128 + 1, 1, &refs)) {
-            Ok(_) => {}
-            Err(CommonPhrasesError::TooLarge) => {
-                refused = true;
-                break;
-            }
-            Err(error) => panic!("{error}"),
-        }
-    }
-    assert!(refused);
+    assert!(matches!(
+        store.add(&format!("{:04}{body}", MAX_OWN_PHRASES)),
+        Err(CommonPhrasesError::Limit)
+    ));
     assert!(fs::metadata(&store.file).unwrap().len() <= MAX_FILE_BYTES);
     store.load().unwrap();
 }
@@ -502,23 +364,17 @@ fn common_phrases_corrupt_file_is_reported_and_left_alone() {
     store.add("保留").unwrap();
     for corrupt in [
         b"{not json".to_vec(),
-        // 条目引用了没有安装的包。
-        serde_json::to_vec(&serde_json::json!({
-            "phrases": [{"id": Uuid::from_u128(9), "text": "孤儿", "pack": Uuid::from_u128(7)}],
-            "packs": []
-        }))
-        .unwrap(),
         // 重复的 id。
         serde_json::to_vec(&serde_json::json!({
             "phrases": [
-                {"id": Uuid::from_u128(9), "text": "一", "pack": null},
-                {"id": Uuid::from_u128(9), "text": "二", "pack": null}
-            ],
-            "packs": []
+                {"id": Uuid::from_u128(9), "text": "一"},
+                {"id": Uuid::from_u128(9), "text": "二"}
+            ]
         }))
         .unwrap(),
-        // 不认识的字段。
-        serde_json::to_vec(&serde_json::json!({"phrases": [], "packs": [], "extra": 1})).unwrap(),
+        // 不认识的字段，包括已经删掉的 `packs`。
+        serde_json::to_vec(&serde_json::json!({"phrases": [], "extra": 1)).unwrap(),
+        serde_json::to_vec(&serde_json::json!({"phrases": [], "packs": []})).unwrap(),
     ] {
         fs::write(&store.file, &corrupt).unwrap();
         assert!(matches!(store.load(), Err(CommonPhrasesError::Corrupt)));
@@ -553,10 +409,10 @@ fn common_phrases_actions_use_the_operation_tag() {
     .unwrap();
     store.perform(action).unwrap();
     let action: CommonPhrasesAction = serde_json::from_value(serde_json::json!({
-        "operation": "install_pack", "resource": pack(5, 1, &["包"])
+        "operation": "remove", "id": id
     }))
     .unwrap();
-    assert_eq!(store.perform(action).unwrap().document.packs.len(), 1);
+    assert!(store.perform(action).unwrap().document.phrases.is_empty());
     assert!(
         serde_json::from_value::<CommonPhrasesAction>(serde_json::json!({
             "operation": "add", "text": "你好", "extra": true
@@ -577,13 +433,13 @@ fn common_phrases_refuse_a_symlinked_file() {
     let (root, store) = fresh();
     fs::create_dir_all(root.path().join("preferences")).unwrap();
     let outside = root.path().join("outside.json");
-    fs::write(&outside, b"{\"phrases\":[],\"packs\":[]}").unwrap();
+    fs::write(&outside, b"{\"phrases\":[]}").unwrap();
     symlink(&outside, &store.file).unwrap();
     assert!(store.load().is_err());
     assert!(store.add("不该写到外面").is_err());
     assert_eq!(
         fs::read(&outside).unwrap(),
-        b"{\"phrases\":[],\"packs\":[]}"
+        b"{\"phrases\":[]}"
     );
 }
 
