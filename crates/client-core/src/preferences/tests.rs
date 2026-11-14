@@ -5961,15 +5961,15 @@ fn first_document_tells_a_fresh_install_from_an_upgrade() {
 }
 
 #[test]
-fn touch_spelling_position_defaults_to_the_editor_independently_of_the_candidate_window() {
-    // 桌面候选窗默认画拼音行；触屏的拼写位置不能跟着它挪出输入框。
+fn touch_spelling_position_defaults_to_the_candidate_bar_independently_of_the_candidate_window() {
+    // 桌面候选窗默认画拼音行；触屏的拼写位置不能跟着它挪进输入框，出厂就是只画在候选栏上。
     assert_eq!(
         Preferences::default().candidate_preedit_style,
         CandidatePreeditStyle::Pinyin
     );
     assert_eq!(
         Preferences::default().touch_spelling_position,
-        TouchSpellingPosition::Editor
+        TouchSpellingPosition::CandidateBar
     );
 
     let dir = tempfile::tempdir().unwrap();
@@ -5982,7 +5982,7 @@ fn touch_spelling_position_defaults_to_the_editor_independently_of_the_candidate
     fs::write(store.path(), serde_json::to_vec(&legacy).unwrap()).unwrap();
     assert_eq!(
         store.load().unwrap().preferences.touch_spelling_position,
-        TouchSpellingPosition::Editor
+        TouchSpellingPosition::CandidateBar
     );
 
     let saved = store
@@ -6034,7 +6034,8 @@ fn touch_keyboard_spacing_uses_apple_defaults_bounds_and_legacy_roundtrip() {
     assert_eq!(loaded.preferences.touch_key_spacing_tenths, 60);
     assert_eq!(loaded.preferences.touch_row_spacing_tenths, 70);
     assert_eq!(loaded.preferences.touch_keyboard_height_adjustment, 0);
-    assert!(!loaded.preferences.touch_voice_shortcut);
+    // 沙鸥拼音的工具栏语音入口出厂即选中：缺键按开读。
+    assert!(loaded.preferences.touch_voice_shortcut);
     assert_eq!(
         loaded.preferences.touch_number_keypad_order,
         NumberKeypadOrder::Phone
@@ -8487,7 +8488,9 @@ fn touch_toolbar_keeps_the_original_buttons_by_default_and_round_trips_partial_d
     let defaults = loaded.preferences.touch_toolbar;
     assert!(defaults.layout && defaults.emoji && defaults.skin);
     assert!(!defaults.undo && !defaults.redo);
-    assert!(!defaults.clipboard && !defaults.ai && !defaults.character_set);
+    // 沙鸥拼音把剪贴板按钮打开：输入法装上就有剪贴板历史可用，按钮要在工具栏上。
+    assert!(defaults.clipboard);
+    assert!(!defaults.ai && !defaults.character_set);
 
     // 缺少新开关的旧文档按共享默认值补全，不能让升级后的工具栏自动增加按钮。
     let partial: TouchToolbarPreferences =
