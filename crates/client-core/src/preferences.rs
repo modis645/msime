@@ -1824,8 +1824,9 @@ pub struct Preferences {
     /// its model is installed.
     #[serde(default)]
     pub sentence_association: SentenceAssociationPreferences,
-    /// 上屏后推荐下一词，独立于整句候选，默认关闭；只有声明了 `HostCapabilities::next_word_prediction` 的宿主读它（Android 原生键盘、Windows 原生设置都有入口）。
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    /// 上屏后推荐下一词，独立于整句候选。沙鸥拼音出厂即选中：缺这个键的旧文档（以前默认关，关着不写进文档）也按开读。
+    /// 关掉要能落盘，所以写 `false` 时也留在文档里。只有声明了 `HostCapabilities::next_word_prediction` 的宿主读它（Android 原生键盘、Windows 原生设置都有入口）。
+    #[serde(default = "enabled_by_default")]
     pub next_word_prediction: bool,
     /// 上屏后联想时候选栏右端的按键，见 [`NextWordPredictionButtons`]；默认即现有的只有展开键，不写进文档。
     #[serde(default, skip_serializing_if = "NextWordPredictionButtons::is_default")]
@@ -1981,9 +1982,9 @@ pub struct Preferences {
     /// Touch-keyboard height adjustment in density-independent pixels.
     #[serde(default)]
     pub touch_keyboard_height_adjustment: i8,
-    /// Show a direct voice-result entry in touch-keyboard toolbars. 沙鸥拼音出厂即打开：缺这个键的旧文档也按开读，
-    /// 真值是 `true` 时不写进文档，等于默认值不落盘。
-    #[serde(default = "enabled_by_default", skip_serializing_if = "is_true")]
+    /// Show a direct voice-result entry in touch-keyboard toolbars. 沙鸥拼音出厂即打开：缺这个键的旧文档也按开读。
+    /// 关掉要能落盘，所以写 `false` 时也留在文档里：跳过的话「关」这个状态存不下来，下次读又按默认打开。
+    #[serde(default = "enabled_by_default")]
     pub touch_voice_shortcut: bool,
     /// 九宫格数字层按电话还是计算器排列；字母层不受影响。
     #[serde(default)]
@@ -4473,7 +4474,7 @@ impl Default for Preferences {
             vim_mode_apps: Vec::new(),
             ai_assistant: AiAssistantPreferences::default(),
             sentence_association: SentenceAssociationPreferences::default(),
-            next_word_prediction: false,
+            next_word_prediction: true,
             next_word_prediction_buttons: NextWordPredictionButtons::default(),
             custom_translation: CustomTranslationPreferences::default(),
             local_translation: crate::local_translation::LocalTranslationPreferences::default(),
