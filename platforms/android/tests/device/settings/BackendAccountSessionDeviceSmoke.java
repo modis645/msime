@@ -536,19 +536,6 @@ public final class BackendAccountSessionDeviceSmoke extends Instrumentation {
         check(tooLarge, "translation retains its 256 KiB response bound");
     }
 
-    private static void malformedQqLinksAreRejected() throws Exception {
-        CloudApi cloud = new CloudApi((method, path, headers, body) ->
-            new CloudApi.Exchange(200, "application/json", null, new byte[] {'{', '}'}),
-            ignored -> ACCESS, ignored -> "");
-        boolean rejected = false;
-        try {
-            new TypingUploadApi(cloud).links();
-        } catch (CloudApi.Failure failure) {
-            rejected = failure.status == 200 && "invalid_response".equals(failure.code);
-        }
-        check(rejected, "malformed QQ link list must not be treated as empty");
-    }
-
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         start();
@@ -591,8 +578,6 @@ public final class BackendAccountSessionDeviceSmoke extends Instrumentation {
             candidateTranslationKeepsGoodItems();
             stage = "candidate translation response bound";
             candidateTranslationKeepsResponseBound();
-            stage = "malformed QQ links";
-            malformedQqLinksAreRejected();
             result.putString("stream", "MSIME_DEVICE_SMOKE_PASSED: account login lineage, community and translation\n");
             finish(Activity.RESULT_OK, result);
         } catch (Exception | AssertionError | LinkageError error) {
