@@ -111,6 +111,38 @@ public final class ImeStartupProbe {
         }
     }
 
+    /**
+     * 记一条带说明的节点：用来写「系统到底有没有要求显示窗口」这类不是耗时、但决定键盘出不来的事实。
+     *
+     * <p>和 {@link #stage} 一样只在进程刚起来的窗口内落盘，正常打字不产生写入。
+     *
+     * @param createAtMs {@code onCreate} 开始的 uptime 毫秒；还没记到（-1）时不写
+     * @param label      节点名，如 `input`、`evaluate`、`view`
+     * @param detail     一行说明；null 或空时不写多余内容
+     */
+    public static void note(android.content.Context context, long createAtMs, String label, String detail) {
+        if (createAtMs < 0) return;
+        long after = android.os.SystemClock.uptimeMillis() - createAtMs;
+        if (after < 0 || after > STAGE_WINDOW_MILLIS) return;
+        try {
+            File file = file(context, FILE_NAME);
+            if (file == null) return;
+            synchronized (LOCK) {
+                List<String> lines = read(file);
+                StringBuilder line = new StringBuilder()
+                    .append(stamp())
+                    .append("    ").append(label)
+                    .append("=+").append(after).append("ms");
+                if (detail != null && !detail.trim().isEmpty()) line.append("  ").append(detail);
+                lines.add(sanitize(line));
+                while (lines.size() > KEEP) lines.remove(0);
+                Files.write(file.toPath(), join(lines).getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (IOException | RuntimeException failed) {
+            Log.w(TAG, "startup note not written", failed);
+        }
+    }
+
     /** {@code onDestroy}：删掉存活标记，这一次算正常退出。 */
     public static void cleanExit(android.content.Context context) {
         try {
