@@ -3,7 +3,7 @@ package app.msime.android;
 import java.util.Map;
 
 /**
- * 14 键与 18 键字母键右上角的符号（#11063）：一键一个符号，不放数字（数字由顶部数字行提供）。14 键是 `QW；ER# TY… UI( OP) / AS@ DF- GH、 JK： L" / ZX~ CV? BN! M/`，`% * & ¥` 留在「符」面板；18 键是 `Q； WE… RT- Y¥ U& IO( P) / A@ SD# FG% H* JK： L" / Z~ XC、 V? BN! M/`。全拼、双拼和五笔共用这两张表，与 iOS、HarmonyOS 是同一份。
+ * 14 键与 18 键字母键右上角的符号（#11063）：一键一个符号，不放数字（数字由顶部数字行提供）。14 键是 `QW；ER# TY… UI( OP) / AS@ DF- GH、 JK： L" / ZX~ CV? BN! M/`，`% * & $` 留在「符」面板；18 键是 `Q； WE… RT- Y$ U& IO( P) / A@ SD# FG% H* JK： L" / Z~ XC、 V? BN! M/`。全拼、双拼和五笔共用这两张表，与 iOS、HarmonyOS 是同一份。
  *
  * <p>表里存的是 ASCII 或本来就不是 ASCII 的字符本身。中文标点生效时，Engine 会转写的那几个（`( ) " ? ! : ;`）键面画中文形式（{@link #face}），输入交给 Engine 的标点路由（{@link #routesThroughEngine}），其余按字面上屏，与 26 键的 {@link LetterHintTable} 相同。
  */
@@ -16,7 +16,7 @@ public final class GridLetterHintTable {
         Map.entry("zx", "~"), Map.entry("cv", "?"), Map.entry("bn", "!"), Map.entry("m", "/"));
 
     private static final Map<String, String> EIGHTEEN = Map.ofEntries(
-        Map.entry("q", ";"), Map.entry("we", "…"), Map.entry("rt", "-"), Map.entry("y", "¥"),
+        Map.entry("q", ";"), Map.entry("we", "…"), Map.entry("rt", "-"), Map.entry("y", "$"),
         Map.entry("u", "&"), Map.entry("io", "("), Map.entry("p", ")"),
         Map.entry("a", "@"), Map.entry("sd", "#"), Map.entry("fg", "%"), Map.entry("h", "*"),
         Map.entry("jk", ":"), Map.entry("l", "\""),
