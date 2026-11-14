@@ -28,7 +28,9 @@ public final class RerankModelDownload {
     public static boolean enhanced(JSONObject preferences) {
         JSONObject association = preferences == null ? null : preferences.optJSONObject("sentence_association");
         boolean lattice = association == null || association.optBoolean("word_lattice", true);
-        boolean neural = association != null && association.optBoolean("neural_keyboard", false);
+        // 缺键按开：共享层把「增强」定为出厂值（ExpressionPage 的 sentenceLevel 也是这个口径），
+        // 两边不一致时全新安装会被判成「标准」，重排模型永远不下载。
+        boolean neural = association == null || association.optBoolean("neural_keyboard", true);
         return lattice && neural;
     }
 
