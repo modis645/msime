@@ -1637,8 +1637,18 @@ public final class MSIMEInputService extends InputMethodService {
         ImeStartupProbe.stage(this, startupProbeCreateAt, "bindInput", null);
     }
 
+    /** 自检里一行「什么样的输入框」：包名、输入类型、imeOptions、是不是重启连接。 */
+    private static String editorFacts(EditorInfo info, boolean restarting) {
+        if (info == null) return "editor=null restart=" + (restarting ? 1 : 0);
+        return "pkg=" + info.packageName
+            + " type=0x" + Integer.toHexString(info.inputType)
+            + " ime=0x" + Integer.toHexString(info.imeOptions)
+            + " restart=" + (restarting ? 1 : 0);
+    }
+
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
         ImeStartupProbe.stage(this, startupProbeCreateAt, "startInput", null);
+        ImeStartupProbe.note(this, startupProbeCreateAt, "input", editorFacts(info, restarting));
         // restart 保留组字也属于新的焦点边界，旧照片和识别回调不能跨过去。
         if (imeOcr != null) imeOcr.close();
         cancelPendingCompositionMarkerLoss();
@@ -1996,6 +2006,7 @@ public final class MSIMEInputService extends InputMethodService {
 
     @Override public void onStartInputView(EditorInfo info, boolean restarting) {
         ImeStartupProbe.stage(this, startupProbeCreateAt, "startInputView", null);
+        ImeStartupProbe.note(this, startupProbeCreateAt, "view", editorFacts(info, restarting));
         super.onStartInputView(info, restarting);
         armFirstFrameWait();
         // 反馈必须在第一下按键前生效，不能被延迟刷新的组字保护跳过。
@@ -2317,7 +2328,12 @@ public final class MSIMEInputService extends InputMethodService {
             hardwareKeyboardMode = next;
             if (keyboardRoot != null) render();
         }
-        return HardwareKeyboardModePolicy.showInputView(systemShows, attached, engineEditor);
+        boolean show = HardwareKeyboardModePolicy.showInputView(systemShows, attached, engineEditor);
+        ImeStartupProbe.note(this, startupProbeCreateAt, "evaluate",
+            "sys=" + (systemShows ? 1 : 0) + " att=" + (attached ? 1 : 0)
+                + " eng=" + (engineEditor ? 1 : 0) + " show=" + (show ? 1 : 0)
+                + " " + editorFacts(info, false));
+        return show;
     }
 
     private static boolean hardwareKeyboardAttached(Configuration configuration) {
