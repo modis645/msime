@@ -338,7 +338,12 @@ public final class MSIMEInputService extends InputMethodService {
     int candidateFontSize = 16;
     int candidatePreeditFontSize = 16;
     int candidateScalePercent = 100;
-    /** 拼音显示在候选栏还是输入框（`touch_spelling_position`）；共享偏好缺失或非法时按产品默认只画在候选栏，核心默认仍是写进输入框。 */
+    /**
+     * 拼音只画在候选栏上，不写进输入框：沙鸥拼音的产品默认，不看 `touch_spelling_position`。
+     *
+     * <p>这一项原来的设置行已经随精简版删掉，可旧安装、云同步和桌面端都可能把文档里的值写成 `editor`，
+     * 于是「拼音出现在输入框」反复出现；设置页再没有入口能改回来。产品口径就是候选栏，所以这里不再读偏好。
+     */
     private String spellingPosition = CandidatePreeditStylePolicy.CANDIDATE_BAR;
     CandidateAppearance.Palette candidateAppearance =
         CandidateAppearance.fromSkin(KeyboardSkin.system(false));
@@ -1184,8 +1189,8 @@ public final class MSIMEInputService extends InputMethodService {
         applyClipboardPreference(preferences, source);
         applyChineseOutputPreference(preferences);
         applyCandidateGlossPreference(preferences);
-        spellingPosition = CandidatePreeditStylePolicy.normalize(
-            InputViewValuePolicy.textOr(preferences, "touch_spelling_position", null));
+        // 拼音只画在候选栏：不读 `touch_spelling_position`（旧文档里的 `editor` 由 PinyinDefaultsMigration 顺手改成候选栏，但这里以产品口径为准）。
+        spellingPosition = CandidatePreeditStylePolicy.CANDIDATE_BAR;
         applyEnglishSuggestionsPreference(preferences);
         applyCandidateTranslationPreference(preferences);
         applyWubiCodeHintPreference(preferences);
@@ -3609,8 +3614,7 @@ public final class MSIMEInputService extends InputMethodService {
         boolean nextCantoneseSimplified = preferences.optBoolean("cantonese_simplified_output", false);
         boolean nextCandidateGloss = preferences.optBoolean("candidate_english_gloss", true);
         boolean nextCandidatePronunciation = preferences.optBoolean("candidate_pronunciation", false);
-        String nextSpellingPosition = CandidatePreeditStylePolicy.normalize(
-            InputViewValuePolicy.textOr(preferences, "touch_spelling_position", null));
+        String nextSpellingPosition = CandidatePreeditStylePolicy.CANDIDATE_BAR;
         boolean nextCandidateTranslations = preferences.optBoolean("candidate_translations", true);
         boolean nextCandidateTranslationAccount = candidateTranslationAccountFrom(preferences);
         CandidateTranslationRoute nextCandidateTranslationRoute = candidateTranslationRouteFrom(preferences);
