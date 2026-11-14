@@ -83,8 +83,9 @@ public final class PinyinDefaultsMigration {
     /** 这类对象里只要有非空字符串，就是用户配过地址或令牌。 */
     private static boolean configured(JSONObject object) {
         if (object == null) return false;
-        for (String key : object.keySet()) {
-            Object value = object.opt(key);
+        java.util.Iterator<String> keys = object.keys();
+        while (keys.hasNext()) {
+            Object value = object.opt(keys.next());
             if (value instanceof String text && !text.isEmpty()) return true;
         }
         return false;
