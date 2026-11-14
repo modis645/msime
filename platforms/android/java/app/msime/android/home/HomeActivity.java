@@ -31,6 +31,7 @@ import app.msime.android.AccountIdentity;
 import app.msime.android.AppEdition;
 import app.msime.android.Bootstrap;
 import app.msime.android.CommunityRequest;
+import app.msime.android.FirstRunModels;
 import app.msime.android.FirstRunPreparation;
 import app.msime.android.HostDeepLink;
 import app.msime.android.KeyboardScheme;
@@ -218,6 +219,7 @@ public final class HomeActivity extends AppCompatActivity {
         if (state == FirstRunPreparation.State.READY && !themeWorker.isShutdown()) {
             requestWubiTableIfWanted();
             requestRerankModelIfWanted();
+            FirstRunModels.startIfNeeded(this);
         }
     };
 
@@ -245,6 +247,7 @@ public final class HomeActivity extends AppCompatActivity {
         CloudSync.onResume(this);
         requestWubiTableIfWanted();
         requestRerankModelIfWanted();
+        FirstRunModels.startIfNeeded(this);
     }
 
     /**
