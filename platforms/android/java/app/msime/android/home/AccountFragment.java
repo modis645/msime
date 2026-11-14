@@ -110,26 +110,8 @@ public final class AccountFragment extends HomeTabFragment {
             } catch (AccountStore.Failure failure) {
                 profile = null;
             }
-            int devices;
-            try {
-                devices = profile == null ? -1 : api.sessions().size();
-            } catch (AccountStore.Failure failure) {
-                devices = -1;
-            }
-            int clipboard;
-            try {
-                if (CloudClipboardRelay.selected(CloudClipboardRelay.preferencesDirectory(context))) {
-                    // 云剪贴板改走了自建中继或 WebDAV 网盘：这里是账号页，不为了一个条数去连中继或网盘，更不能去问水杉账号（那会把这台设备登记到账号的云剪贴板上）。
-                    clipboard = -1;
-                } else {
-                    BackendAccount.ClipboardPage page = new BackendAccount(context).clipboard("", sessionId,
-                        CloudClipboardNativeDriver.local(context));
-                    // 这台设备还在等允许时读不到条目，不写「0 条」。
-                    clipboard = page.enabled() && !page.pending() ? page.items().size() : -1;
-                }
-            } catch (Exception unavailable) {
-                clipboard = -1;
-            }
+            int devices = -1;
+            int clipboard = -1;
             Bitmap avatar = profile == null ? null : ProfilePage.avatar(api, profile);
             boolean current;
             try {
@@ -182,7 +164,7 @@ public final class AccountFragment extends HomeTabFragment {
         avatar.addView(ProfilePage.avatarView(context, 56, signedIn ? name : "",
             online == null ? null : online.avatar()));
         view.findViewById(R.id.account_card).setContentDescription(
-            signedIn ? name + "，个人资料" : "未登录，点按登录");
+            signedIn ? name : "未登录，点按登录");
     }
 
     /** 资料卡下面那一行。登录了真实账号时用 Rust 写好的同步状态行：失败原因、云端被清空等提示优先于「已同步 · 最近 …」，关闭时是「云同步已关闭」（在「云端被清空」里选了关闭同步时另有一句）；读不到状态时只按开关说。 */
@@ -194,10 +176,7 @@ public final class AccountFragment extends HomeTabFragment {
 
     private void openProfile() {
         Local state = local;
-        if (state != null && state.signedIn()) {
-            SettingsNavigator.open(requireContext(), PageId.PROFILE, null);
-            return;
-        }
+        if (state != null && state.signedIn()) return;
         SignIn.start(requireActivity(), failure -> {
             // 登录面板可能在用户离开这一页之后才结束；没有视图就不再汇报。
             if (!isAdded() || getView() == null) return;
@@ -223,9 +202,6 @@ public final class AccountFragment extends HomeTabFragment {
             () -> SettingsNavigator.open(context, PageId.PHRASES, null));
         KeyboardSheets.help(row(group, R.drawable.ic_ms_download, "备份与恢复", null, null,
             () -> SettingsNavigator.open(context, PageId.BACKUP, null)), "备份与恢复", "导出到本机文件，换手机时恢复");
-        row(group, R.drawable.ic_ms_content_paste, "云剪贴板", null,
-            online == null || online.clipboard() < 0 ? null : online.clipboard() + " 条",
-            () -> SettingsNavigator.open(context, PageId.CLOUD_CLIPBOARD, null));
     }
 
     /** 当前键盘明暗对应的皮肤名；设计库引用由皮肤页显示具体名字。 */
@@ -285,14 +261,6 @@ public final class AccountFragment extends HomeTabFragment {
             ViewPolicy.setEnabledWithAlpha(sync, false, 0.38f);
         }
 
-        String devices = !signedIn ? "—" : online == null || online.devices() < 0 ? null : online.devices() + " 台";
-        row(group, R.drawable.ic_ms_devices, "我的设备", null, devices,
-            signedIn ? () -> SettingsNavigator.open(context, PageId.DEVICES, null) : null);
-        // 绑定后在 QQ 群里发 /stats 看打字数据；只有真实账号能绑定。
-        LinearLayout qq = KeyboardSheets.help(row(group, R.drawable.ic_ms_link, "绑定 QQ 群助手",
-            real ? null : "登录后可用", null,
-            real ? () -> SettingsNavigator.open(context, PageId.QQ_LINKS, null) : null), "绑定 QQ 群助手", "在群里发 /stats 查看打字数据");
-        if (!real) ViewPolicy.setEnabledWithAlpha(qq, false, 0.38f);
     }
 
     private void setSync(boolean enabled) {
