@@ -716,10 +716,11 @@ pub enum TwentySixKeyNumberLayout {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TouchSpellingPosition {
-    /// 作为组字写进输入框，候选栏不再重复画它。
-    #[default]
+    /// 作为组字写进输入框，候选栏不再重复画它。桌面要这个值，但触屏这一侧的产品默认是候选栏；
+    /// 旧文档缺这个键时按下面的 `CandidateBar` 读，等于这台设备上从来没有人的拼写会挪进输入框。
     Editor,
-    /// 只画在候选栏上，不写进输入框。
+    /// 只画在候选栏上，不写进输入框。触屏键盘的出厂默认：输入框里不出现拼音字母。
+    #[default]
     CandidateBar,
 }
 
@@ -2891,7 +2892,8 @@ impl Default for TouchToolbarPreferences {
             layout: true,
             emoji: true,
             skin: true,
-            clipboard: false,
+            // 上游默认关掉剪贴板按钮；沙鸥拼音要装上就在工具栏上（剪贴板历史出厂也是开的）。
+            clipboard: true,
             ai: false,
             character_set: false,
             fullwidth: false,
@@ -4526,7 +4528,7 @@ impl Default for Preferences {
             android_text_trackpad: TextTrackpadPreferences::default(),
             touch_row_spacing_tenths: default_touch_row_spacing_tenths(),
             touch_keyboard_height_adjustment: 0,
-            touch_voice_shortcut: false,
+            touch_voice_shortcut: true,
             touch_number_keypad_order: NumberKeypadOrder::default(),
             touch_text_edit_button_order: default_text_edit_button_order(),
             touch_twenty_six_key_number_layout: TwentySixKeyNumberLayout::default(),
