@@ -12204,6 +12204,12 @@ public final class MSIMEInputService extends InputMethodService {
                 caretMark = CompositionCaretPolicy.markIndex(editingText, editingText, caretKeypad, caret, caretKeyGrid);
             }
             boolean spellingDrawn = caretMark >= 0 || spelling.equals(localModeTitle);
+            // 光标移到末尾时也要画：策略只给「离开末尾」的位置算下标，移到最后那一格光标就没了。读音行本来
+            // 就在画这串拼音（spellingDrawn）时把光标补在末尾；只画一支笔的形态不补，免得把拼音又拉回读音行。
+            if (caretEditable && caretMark < 0 && caret == editingText.length() && spellingDrawn
+                    && !spelling.isEmpty()) {
+                caretMark = spelling.length();
+            }
             imeCompositionEditor.render(caretSpelling, editingText, caretKeypad, caret, caretKeyGrid);
             String displayText = idleTitle
                 ? (dedicatedEnglish ? "英文输入" : productName)
