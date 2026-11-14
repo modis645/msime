@@ -235,6 +235,19 @@ public final class ResourcePackService extends Service {
     }
 
     /**
+     * 装好之后替用户准备的下载（首启的 {@link FirstRunModels}）：不问「用移动数据吗」，直接排进前台服务，
+     * 进度、大小和结果都在通知里；用户仍然可以在通知或设置页里取消。正在下载或卸载的什么也不做。
+     *
+     * @param voiceTitle 本地语音模型的名字，资源包传 null
+     */
+    public static void startAutomatic(Context context, String pack, @Nullable String voiceTitle) {
+        Status current = STATUS.get(pack);
+        if ((current != null && current.running()) || REMOVING.contains(pack)) return;
+        if (voiceTitle != null && isVoiceModel(pack)) MODEL_TITLES.put(pack, voiceTitle);
+        start(context, pack);
+    }
+
+    /**
      * 用户选好了文件：不联网，用这些文件安装资源包或本地语音模型（{@code pack} 是资源包 id 或 {@link #voiceModelKey}）。正在下载或导入的什么也不做。
      *
      * @param uris 文件选择器给的文档，读权限随启动服务的 Intent 一起交给服务
