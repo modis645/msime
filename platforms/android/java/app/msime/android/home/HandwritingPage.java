@@ -81,8 +81,9 @@ public final class HandwritingPage extends ReloadingDetailPage {
         group.help(MlKitHandwritingModel.TITLE + "：键盘手写用这一份，下载一次即可离线识别；不装也不影响拼音与语音。");
         if (installed == null) checkModel();
         GroupCard others = GroupCard.add(target, "其他按需下载");
-        others.help("整个输入法只有三样东西要按需下载：中文手写识别模型（本页或键盘的手写面板）、"
-            + "本地语音模型（语音输入页）、词库更新包（词库页）；其余功能都不额外下载。");
+        others.help("整个输入法只有三样东西要下载：中文手写识别模型（本页或键盘的手写面板）、"
+            + "本地语音运行库和本地语音模型「快速整句」（语音输入页）；装好第一次打开设置应用时已经自动开始下载，"
+            + "进度在系统通知里，装完就能离线用，其余功能都不额外下载。");
     }
 
     private void checkModel() {
