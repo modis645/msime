@@ -158,6 +158,8 @@ public final class RustCloudSync {
             String options) throws AccountStore.Failure, IOException, JSONException {
         migrate(context);
         // 导出设置之前先迁本机旧的长空格和数字行设置，否则共享偏好里的默认值会被当成用户的选择传上去。没迁完（共享偏好读写失败、修订号一直被抢）时这一轮锁住设置分类：设置既不导出也不应用、待上传标记留着，常用语和词库照常同步，下一轮再迁。
+        // 导出之前先把这个精简版的出厂值落到共享偏好，免得把旧文档里开着的翻译、云剪贴板配置导出到别的设备。
+        PinyinDefaultsMigration.migrate(context);
         boolean settingsMigrated = KeyLayoutStyleMigration.migrate(context, preferencesDirectory);
         JSONObject inputs = new JSONObject()
             .put("feedback", feedback(context))
