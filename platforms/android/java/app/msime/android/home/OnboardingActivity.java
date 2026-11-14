@@ -78,6 +78,9 @@ public final class OnboardingActivity extends AppCompatActivity {
     private final int pages = steps.length;
 
     private int page;
+    /** 上一次画「把水杉加进键盘」那一步时看到的两个系统状态，回来时变了就重画。 */
+    private Boolean imeEnabledSeen;
+    private Boolean imeCurrentSeen;
     @Nullable private JSONObject snapshot;
     private boolean loaded;
     /** 意外异常后自动重试保存的次数与间隔，见 {@link #syncChoices}。 */
@@ -223,14 +226,35 @@ public final class OnboardingActivity extends AppCompatActivity {
 
     private void enable(LinearLayout column) {
         header(column, R.drawable.ic_ms_keyboard, ordinal() + " · 约 30 秒", "把水杉加进键盘",
-            "在系统设置里启用水杉，并设为默认输入法，之后在任何应用里都能直接用。");
+            "一个按钮就够：没启用会带你去系统设置里勾选，勾好了再点一下就直接切过来。");
         Boolean enabled = ImeSetup.enabledState(this);
         Boolean current = ImeSetup.currentState(this);
+        imeEnabledSeen = enabled;
+        imeCurrentSeen = current;
+        String state;
+        if (Boolean.TRUE.equals(current)) state = "已是当前输入法";
+        else if (Boolean.TRUE.equals(enabled)) state = "已启用，还不是当前输入法";
+        else if (enabled == null || current == null) state = "无法自动确认当前状态";
+        else state = "还没在系统里启用";
         LinearLayout card = card(column, 6);
-        check(card, getString(R.string.settings_check_enabled), enabled,
-            getString(R.string.settings_action_enable), () -> ImeSetup.openSettings(this), false);
-        check(card, getString(R.string.settings_check_default), current,
-            getString(R.string.settings_action_default), () -> ImeSetup.makeDefault(this), true);
+        check(card, state, Boolean.TRUE.equals(enabled) && Boolean.TRUE.equals(current),
+            "启用并切换", () -> {
+                ImeSetup.enableAndSwitch(this);
+                render(false);
+            }, false);
+    }
+
+    /**
+     * 从系统输入法设置页回来时刷新这一步：那两个状态是系统里的实情，用户刚改过就要立刻看到，
+     * 否则卡片还写着「未启用」、按钮也还在。
+     */
+    @Override protected void onResume() {
+        super.onResume();
+        if (steps.length == 0 || page != 0) return;
+        Boolean enabled = ImeSetup.enabledState(this);
+        Boolean current = ImeSetup.currentState(this);
+        if (enabled == imeEnabledSeen && current == imeCurrentSeen) return;
+        render(false);
     }
 
     private void schemes(LinearLayout column) {
