@@ -114,13 +114,13 @@ public final class ExpressionPage extends ReloadingDetailPage {
         intelligence.nav("整句候选", null, SENTENCE_LABELS[sentence], () -> pickSentence(sentence)).help(SENTENCE_DESCRIPTION);
         if (sentence == 2 && rerankModelWanted()) rerankModelRow(intelligence);
         intelligence.toggle("上屏后联想", null,
-            values.optBoolean("next_word_prediction", false),
+            values.optBoolean("next_word_prediction", true),
             checked -> savePreferences(edit -> edit.put("next_word_prediction", checked))).help("选词上屏后推荐后续文字，点选、按数字键或空格上屏，继续输入其他内容时消失；使用现有词库，开启学习时也参考个人词序，隐私输入不显示");
         // 联想按键的样式只在开启上屏后联想后可选，关着时整行变灰。
         PredictionButtonsPolicy.Style buttons = PredictionButtonsPolicy.Style.parse(
             values.optString(PredictionButtonsPolicy.PREFERENCE_KEY, ""));
         intelligence.nav("联想栏按键", null, PREDICTION_BUTTON_LABELS[buttons.ordinal()],
-            values.optBoolean("next_word_prediction", false) ? () -> pickStyle("联想栏按键",
+            values.optBoolean("next_word_prediction", true) ? () -> pickStyle("联想栏按键",
                 PREDICTION_BUTTONS_DESCRIPTION, PredictionButtonsPolicy.PREFERENCE_KEY, predictionButtonValues(),
                 PREDICTION_BUTTON_LABELS, buttons.ordinal()) : null).help(PREDICTION_BUTTONS_DESCRIPTION);
         InputFeatureToggle english = InputFeatureToggle.ENGLISH_SUGGESTIONS;
