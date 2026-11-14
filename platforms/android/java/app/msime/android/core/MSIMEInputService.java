@@ -1932,10 +1932,24 @@ public final class MSIMEInputService extends InputMethodService {
             theme = getResources().getIdentifier("Theme.MSIME.InputMethod", "style", "app.msime.android");
         if (theme != 0) setTheme(theme);
         super.onCreate();
+        try {
         getContentResolver().registerContentObserver(
             Settings.Secure.getUriFor(Settings.Secure.DEFAULT_INPUT_METHOD), false, inputMethodWatcher);
         if (Build.VERSION.SDK_INT >= 30) inlineAutofill = new ImeInlineAutofill(this);
-        LauncherIcons.normalize(this);
+        // 这两件都是磁盘活：图标归并要读包管理器再写别名，清剪贴板图片缓存要删目录。放在 onCreate 的同步路径上，
+        // 冷启动时会把首帧拖到系统允许的绑定时间之外，表现就是「输入法调不出来，先启用别的输入法再切回来才好」。
+        new Thread(() -> {
+            try {
+                LauncherIcons.normalize(this);
+            } catch (Throwable ignored) {
+                // 图标没归并不影响键盘。
+            }
+            try {
+                clearClipboardImages();
+            } catch (Throwable ignored) {
+                // 清不掉缓存只浪费一点空间。
+            }
+        }, "msime-ime-startup").start();
         hardwareKeyboardAttached = hardwareKeyboardAttached(getResources().getConfiguration());
         productName = getApplicationInfo().loadLabel(getPackageManager()).toString();
         // 偏好要等引擎准备好才读到；先按上次换上的皮肤画，免得每次弹出键盘都先闪一两秒内置的淡绿配色。
@@ -1951,10 +1965,13 @@ public final class MSIMEInputService extends InputMethodService {
         }
         ClipboardManager clipboard = getSystemService(ClipboardManager.class);
         if (clipboard != null) clipboard.addPrimaryClipChangedListener(clipboardWatcher);
-        // 键盘进程上次没走到 onDestroy 就被回收时，发出去的图片副本还留在缓存里。
-        clearClipboardImages();
         // 键盘进程被系统回收后，下一次弹出键盘先要走这里（#9916）。这时还没进输入框，隐私判断没有依据，耗时先留着，进了允许记录的输入框再写（onStartInput）。
         imeDebugOverlay.holdServiceCreate(SystemClock.uptimeMillis() - createStartedAt);
+            ImeStartupProbe.report(this, SystemClock.uptimeMillis() - createStartedAt, "ok", null);
+        } catch (Throwable error) {
+            // 进程起不来的原因先留在设备上：设置页「输入法启动自检」读得到，用户下次报「调不起来」就有依据。
+            ImeStartupProbe.report(this, SystemClock.uptimeMillis() - createStartedAt, "failed", error);
+        }
     }
 
     @android.annotation.TargetApi(30)
