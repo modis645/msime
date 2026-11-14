@@ -1,5 +1,7 @@
 package app.msime.android.home;
 
+import app.msime.android.ImeStartupProbe;
+
 import app.msime.android.ScreenCaptureProtection;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
@@ -261,6 +263,8 @@ public final class DeveloperPage extends ReloadingDetailPage {
             .setEnabled(!busy && snapshot != null);
         data.button("分享诊断包", null, "分享", this::shareBundle).help("通过其他应用发送一份诊断包")
             .setEnabled(!busy && snapshot != null);
+        data.button("输入法启动自检", "最近几次输入法进程的启动耗时与异常", "查看", this::showImeStartup)
+            .help("输入法调不起来时看这里：每次输入法进程 onCreate 的耗时和抛出的异常，保留最近 20 次");
         data.button("重置所有设置", "恢复为出厂设置，词库不受影响", "重置", this::confirmReset)
             .setEnabled(!busy && snapshot != null);
     }
@@ -588,6 +592,11 @@ public final class DeveloperPage extends ReloadingDetailPage {
         String path = writeBundle(context, include, destination);
         if (path == null) FilePolicy.deleteQuietly(destination);
         return path;
+    }
+
+    /** 「输入法启动自检」：`:ime` 进程每次 onCreate 的结果，排查「输入法调不起来」。 */
+    private void showImeStartup() {
+        MessageDialog.show(requireContext(), "输入法启动自检", ImeStartupProbe.summary(requireContext()));
     }
 
     private void confirmReset() {
