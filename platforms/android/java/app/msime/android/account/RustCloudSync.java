@@ -167,7 +167,10 @@ public final class RustCloudSync {
             .put("excluded_phrase_texts", new JSONArray(CommonPhrasesStore.untouchedStarters(context)));
         if (!settingsMigrated) inputs.put("settings_locked", true);
         JSONObject action = new JSONObject().put("trigger", trigger)
-            .put("capabilities", new JSONObject().put("settings", true)
+            // 设置分类不参加云同步：沙鸥拼音的出厂值就是这一版的产品默认（拼音只画候选栏、工具栏两个入口默认选中、
+            // 剪贴板 100 条、翻译关闭），而账号里存着别的设备或旧版本的设置文档，一轮同步就会把本机改回旧值，
+            // 界面上又已经没有那些开关能改回来。设置只留本机；常用语和词库照常同步。
+            .put("capabilities", new JSONObject().put("settings", false)
                 .put("phrases", true).put("dictionary", true))
             .put("host_inputs", inputs);
         if (choice != null) action.put("choice", choice);
