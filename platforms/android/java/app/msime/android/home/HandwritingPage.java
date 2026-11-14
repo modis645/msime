@@ -10,7 +10,7 @@ import app.msime.android.MlKitHandwritingModel;
  *
  * <p>范围与步长（等待 200–1500 ms 步长 100，粗细 1–8 px）由本地设置的校验给出，与同步时 client-core 接受的范围相同。
  *
- * <p>手写模型是 Google ML Kit 的中文数字墨水模型，不随包发布，第一次用手写键盘时由键盘那侧下载；这一页读同一份状态，也可以直接下载，两边不再是两套东西。下载没有百分比进度（ML Kit 不提供），所以只有「下载中」和「已安装/未安装」三种状态，下载完成后会回读一次确认确实装好。
+ * <p>手写模型是 Google ML Kit 的中文数字墨水模型，不随包发布，第一次用手写键盘时由键盘那侧下载；这一页读同一份状态，也可以直接下载或删除，两边不再是两套东西。下载没有百分比进度（ML Kit 不提供），所以只有「下载中」和「已安装/未安装」三种状态，下载完成后会回读一次确认确实装好，删除也回读一次。
  */
 public final class HandwritingPage extends ReloadingDetailPage {
     private static final String[] MODES = {"single", "overlap", "line"};
@@ -72,6 +72,12 @@ public final class HandwritingPage extends ReloadingDetailPage {
             group.button("下载手写模型", null, modelDownloading ? "下载中…" : "下载", this::downloadModel);
             if (modelDownloading) group.help("下载没有百分比进度，完成后自动变成「已安装」；停在下载中不动时多半是网络或 Google Play 服务不可用。");
         }
+        // 装好之后给一个删除入口：这个模型不随包发布，是这台手机上最大的一块按需下载（约 20–30 MB），
+        // 原来只能装不能卸，装了不用就一直占着。
+        if (installed != null && installed && !modelDownloading) {
+            group.button("删除手写模型", null, "删除", this::deleteModel);
+            group.help("删除后腾出它占的存储；下次用手写键盘前要重新下载，拼音与语音不受影响。");
+        }
         group.help(MlKitHandwritingModel.TITLE + "：键盘手写用这一份，下载一次即可离线识别；不装也不影响拼音与语音。");
         if (installed == null) checkModel();
         GroupCard others = GroupCard.add(target, "其他按需下载");
@@ -99,6 +105,17 @@ public final class HandwritingPage extends ReloadingDetailPage {
                 ? "手写模型已下载" : "手写模型没有装好，请检查网络或 Google Play 服务后重试");
             reload();
         });
+    }
+
+    private void deleteModel() {
+        if (modelDownloading) return;
+        MessageDialog.confirm(requireContext(), "删除手写模型", "删除后下次用手写键盘前要重新下载，确定删除吗？",
+            "删除", () -> MlKitHandwritingModel.delete(installed -> {
+                if (!isAdded()) return;
+                modelInstalled = installed;
+                MsToast.show(requireContext(), installed ? "手写模型没有删掉，请重试" : "手写模型已删除");
+                reload();
+            }));
     }
 
     private void pick(String title, String[] values, String[] labels, String key, GroupCard.Row row) {
