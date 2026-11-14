@@ -67,7 +67,9 @@ final class ImeSetup {
         try {
             InputMethodManager manager = context.getSystemService(InputMethodManager.class);
             if (manager == null) return false;
-            return manager.setInputMethod(context.getPackageName() + "/app.msime.android.MSIMEInputService");
+            // token 传 null：切成「本应用正在用的那个输入法」，不需要窗口令牌；有的 ROM 仍会忽略这个请求，由调用方稍后确认。
+            manager.setInputMethod(null, context.getPackageName() + "/app.msime.android.MSIMEInputService");
+            return true;
         } catch (RuntimeException unavailable) {
             return false;
         }
@@ -89,7 +91,13 @@ final class ImeSetup {
             if (!tryOpenSettings(context)) makeDefault(context);
             return true;
         }
-        if (switchTo(context)) return false;
+        if (switchTo(context)) {
+            // 静默切换不是所有 ROM 都照办：过一下还没成当前输入法时退回系统切换器，用户点了就成。
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (!Boolean.TRUE.equals(currentState(context))) makeDefault(context);
+            }, 400);
+            return true;
+        }
         makeDefault(context);
         return true;
     }
