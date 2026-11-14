@@ -24,8 +24,6 @@ import app.msime.android.AppIconStyle;
 import app.msime.android.AppVersionPolicy;
 import app.msime.android.BackendAccount;
 import app.msime.android.AccountStore;
-import app.msime.android.CloudClipboardNativeDriver;
-import app.msime.android.CloudClipboardRelay;
 import app.msime.android.DeviceDataApi;
 import app.msime.android.R;
 import app.msime.android.RustCloudSync;
@@ -48,8 +46,8 @@ public final class AccountFragment extends HomeTabFragment {
             String syncStatus) {}
 
     /** 联网读到的：资料（读不到为 null）、头像、设备数与云剪贴板条数（读不到为 -1）、是否绑定了真实账号、读的是哪个账号，以及读完时登录的是否仍是它（在工作线程上核对，主线程不调 Rust）。 */
-    private record Remote(@Nullable DeviceDataApi.Profile profile, @Nullable Bitmap avatar, int devices,
-            int clipboard, boolean realAccount, String sessionId, boolean current) {}
+    private record Remote(@Nullable DeviceDataApi.Profile profile, @Nullable Bitmap avatar,
+            boolean realAccount, String sessionId, boolean current) {}
 
     @Nullable private Local local;
     @Nullable private Remote remote;
@@ -98,9 +96,9 @@ public final class AccountFragment extends HomeTabFragment {
             try {
                 sessionId = DeviceDataApi.currentUserId(context);
             } catch (AccountStore.Failure unavailable) {
-                return new Remote(null, null, -1, -1, false, "", false);
+                return new Remote(null, null, false, "", false);
             }
-            if (sessionId.isEmpty()) return new Remote(null, null, -1, -1, false, "", false);
+            if (sessionId.isEmpty()) return new Remote(null, null, false, "", false);
             DeviceDataApi api = new DeviceDataApi(context, sessionId);
             DeviceDataApi.Profile profile;
             try {
@@ -110,8 +108,6 @@ public final class AccountFragment extends HomeTabFragment {
             } catch (AccountStore.Failure failure) {
                 profile = null;
             }
-            int devices = -1;
-            int clipboard = -1;
             Bitmap avatar = profile == null ? null : ProfilePage.avatar(api, profile);
             boolean current;
             try {
@@ -119,7 +115,7 @@ public final class AccountFragment extends HomeTabFragment {
             } catch (AccountStore.Failure unavailable) {
                 current = false;
             }
-            return new Remote(profile, avatar, devices, clipboard,
+            return new Remote(profile, avatar,
                 SyncSwitch.validLoginKind(SyncSwitch.loginKind(context)), sessionId, current);
         }, state -> {
             if (state == null || request != generation || getView() == null) return;
