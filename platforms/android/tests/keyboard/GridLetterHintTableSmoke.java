@@ -12,11 +12,11 @@ import java.util.Set;
 public final class GridLetterHintTableSmoke {
     public static void main(String[] args) {
         String fourteen = "qw;er#ty…ui(op)|as@df-gh、jk:l\"|zx~cv?bn!m/";
-        String eighteen = "q;we…rt-y¥u&io(p)|a@sd#fg%h*jk:l\"|z~xc、v?bn!m/";
+        String eighteen = "q;we…rt-y$u&io(p)|a@sd#fg%h*jk:l\"|z~xc、v?bn!m/";
         exact(FourteenKeyLayout.rows(), false, fourteen);
         exact(EighteenKeyLayout.rows(), true, eighteen);
 
-        for (String symbol : new String[] {"%", "*", "&", "¥"}) {
+        for (String symbol : new String[] {"%", "*", "&", "$"}) {
             for (List<FourteenKeyLayout.Key> row : FourteenKeyLayout.rows()) {
                 for (FourteenKeyLayout.Key key : row) {
                     check(!symbol.equals(GridLetterHintTable.hint(key, false)),
