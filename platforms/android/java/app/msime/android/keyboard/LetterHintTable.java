@@ -2,13 +2,13 @@ package app.msime.android;
 
 import java.util.Map;
 
-/** 26 键字母键右上角的「更多符号提示」：中文键使用 q1…p0 / a@ s# d¥ f% g& h* j( k) l" / z~ x… c、 v? b! n- m/，英文键只把 X/C 换成下划线和反引号；中文标点生效时，其中 Engine 会转写的 ASCII 标点（j k l v b）键面画中文形式（{@link #face}），下滑或长按交给 Engine 的标点路由上屏（{@link #routesThroughEngine}），其余键面和输出都是这个字符本身。 */
+/** 26 键字母键右上角的「更多符号提示」：中文键使用 q1…p0 / a@ s# d$ f% g& h* j( k) l" / z~ x… c、 v? b! n- m/，英文键只把 X/C 换成下划线和反引号；中文标点生效时，其中 Engine 会转写的 ASCII 标点（j k l v b）键面画中文形式（{@link #face}），下滑或长按交给 Engine 的标点路由上屏（{@link #routesThroughEngine}），其余键面和输出都是这个字符本身。 */
 public final class LetterHintTable {
     private static final Map<String, String> HINTS = Map.ofEntries(
         Map.entry("q", "1"), Map.entry("w", "2"), Map.entry("e", "3"), Map.entry("r", "4"),
         Map.entry("t", "5"), Map.entry("y", "6"), Map.entry("u", "7"), Map.entry("i", "8"),
         Map.entry("o", "9"), Map.entry("p", "0"),
-        Map.entry("a", "@"), Map.entry("s", "#"), Map.entry("d", "¥"), Map.entry("f", "%"),
+        Map.entry("a", "@"), Map.entry("s", "#"), Map.entry("d", "$"), Map.entry("f", "%"),
         Map.entry("g", "&"), Map.entry("h", "*"), Map.entry("j", "("), Map.entry("k", ")"),
         Map.entry("l", "\""),
         Map.entry("z", ";"), Map.entry("x", ":"), Map.entry("c", "、"), Map.entry("v", "?"),
@@ -63,7 +63,7 @@ public final class LetterHintTable {
     }
 
     /**
-     * 中文标点生效时，这个提示字符是否交给 Engine 的标点路由上屏，而不是按字面上屏。只有 Engine 会转写成中文标点的单个 ASCII 字符（( ) " ? !）为真；数字、Engine 不收的 @ # % & * ~ - /，以及本来就不是 ASCII 的 ¥、…、顿号都为假，仍按字面上屏。
+     * 中文标点生效时，这个提示字符是否交给 Engine 的标点路由上屏，而不是按字面上屏。只有 Engine 会转写成中文标点的单个 ASCII 字符（( ) " ? !）为真；数字、Engine 不收的 @ # $ % & * ~ - /，以及本来就不是 ASCII 的 …、顿号都为假，仍按字面上屏。
      *
      * @param hint {@link #hint} 的结果
      */
