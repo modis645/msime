@@ -486,6 +486,13 @@ final class ImeLetterRows {
     private int backspaceInitialDeleted;
     private boolean backspaceHorizontal;
 
+    /** 上一次删除键短按的松手时刻与落点，用来识别「双击清空」；见 {@link #bindBackspaceRepeat}。 */
+    private long backspaceTapUpMs;
+    private float backspaceTapUpX;
+    private float backspaceTapUpY;
+    /** 这一次按压已经被判成双击的第二下：抬手时不再走普通点击路径。 */
+    private boolean backspaceDoubleTap;
+
     void recordBackspaceScrubDelete(CharSequence before) {
         if (backspaceScrub != null) backspaceScrub.ordinaryDelete(before);
     }
@@ -496,12 +503,34 @@ final class ImeLetterRows {
 
     /**
      * 短按删一次，按住连删并逐级加速；左滑锁定水平删除，未松手时右滑恢复（#9324）。上下滑仍提供快速删除（#5585）与撤回（#8325），方向一旦锁定就不切换。
+     *
+     * <p>双击 = 一次清空光标前的全部输入框文字（和长按上滑到顶的「快速删除」同一个动作，
+     * 走 {@code deleteAllBeforeCursor}，所以同样留一次撤回）。判据是两下松手间隔不超过
+     * {@link ViewConfiguration#getDoubleTapTimeout()} 且落点几乎没动。
      */
     void bindBackspaceRepeat(Button button, Runnable action) {
         button.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN -> {
                     cancelBackspaceRepeat();
+                    long downMs = android.os.SystemClock.elapsedRealtime();
+                    float slop = 16f * DimensionPolicy.density(s);
+                    if (downMs - backspaceTapUpMs <= ViewConfiguration.getDoubleTapTimeout()
+                            && !s.handwritingActive()
+                            && Math.abs(event.getX() - backspaceTapUpX) <= slop
+                            && Math.abs(event.getY() - backspaceTapUpY) <= slop) {
+                        // 第二下：直接清空。第一下已经删了一个字，这里把剩下的连根去掉。
+                        backspaceTapUpMs = 0;
+                        backspaceDoubleTap = true;
+                        s.backspaceRepeatButton = button;
+                        button.setPressed(true);
+                        s.imeKeyFeedback.playFeedback(button);
+                        // 与长按上滑到顶的「快速删除」同一个动作，作用范围跟着同一个偏好。
+                        if ("all".equals(s.localSettings.choice(AndroidLocalSettings.QUICK_DELETE_SCOPE)))
+                            s.deleteAllInput();
+                        else s.deleteAllBeforeCursor();
+                        return true;
+                    }
                     s.backspaceRepeatButton = button;
                     s.backspaceRepeated = false;
                     s.backspaceClearedComposition = false;
@@ -608,12 +637,18 @@ final class ImeLetterRows {
                     return true;
                 }
                 case MotionEvent.ACTION_UP -> {
+                    if (backspaceDoubleTap) {
+                        backspaceDoubleTap = false;
+                        cancelBackspaceRepeat();
+                        return true;
+                    }
                     BackspaceSwipePolicy.ClearTarget target = s.backspaceRepeatButton == button
                         ? BackspaceSwipePolicy.clearTarget(backspaceSwipePhase,
                             backspaceTouchedComposition, s.hasEngineComposition())
                         : BackspaceSwipePolicy.ClearTarget.NONE;
                     boolean undo = backspaceUndo;
                     boolean click = undo && !backspaceUndoHeld && button.isPressed();
+                    boolean scrubbed = backspaceHorizontal;
                     cancelBackspaceRepeat();
                     button.setPressed(false);
                     if (target != BackspaceSwipePolicy.ClearTarget.NONE) {
@@ -627,6 +662,14 @@ final class ImeLetterRows {
                         else s.deleteAllBeforeCursor();
                     }
                     if (click) button.performClick();
+                    // 记下这一次普通短按的松手时刻与落点，供"双击清空"识别；滑动手势不算。
+                    if (target == BackspaceSwipePolicy.ClearTarget.NONE && !scrubbed) {
+                        backspaceTapUpMs = android.os.SystemClock.elapsedRealtime();
+                        backspaceTapUpX = event.getX();
+                        backspaceTapUpY = event.getY();
+                    } else {
+                        backspaceTapUpMs = 0;
+                    }
                     return true;
                 }
                 case MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
