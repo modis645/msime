@@ -28,12 +28,10 @@ public final class MlKitImeInitProvider extends ContentProvider {
         } catch (Throwable ignored) {
             // 同上。
         }
-        try {
-            MlKit.initialize(context);
-        } catch (Throwable unavailable) {
-            // 没有 Google Play 服务或 ML Kit 初始化失败时，手写会自己回到「需要下载」状态。
-            android.util.Log.w("msime", "MlKit initialize failed in :ime", unavailable);
-        }
+        // 不在这里 `MlKit.initialize`：这是 `:ime` 进程启动时第一个跑的代码，同步初始化 ML Kit 要拉起
+        // Play 服务的 provider 和模型索引，等于每次冷启动都替手写付一笔钱，而多数会话根本不手写。
+        // 手写识别器自己会在第一次 `DigitalInkRecognition.getClient` 时初始化（见 MlKitHandwritingRecognizer），
+        // 失败也照旧抛 MlKitException 由手写面板处理，所以这里只留 WorkManager 一件必须提前做的事。
         return true;
     }
 
