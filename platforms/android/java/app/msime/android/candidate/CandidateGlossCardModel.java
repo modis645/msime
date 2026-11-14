@@ -14,7 +14,7 @@ import java.util.Map;
 public final class CandidateGlossCardModel {
     public static final String TITLE = "释义";
     public static final String EMPTY = "暂无译文";
-    public static final String EMPTY_HINT = "可以在设置里开启翻译服务";
+    public static final String EMPTY_HINT = "未配置在线翻译服务";
     public static final String PENDING_HINT = "正在请求译文…";
     public static final String COMMIT = "上屏译文";
     public static final String COPY = "复制译文";
