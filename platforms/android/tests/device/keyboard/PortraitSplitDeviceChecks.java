@@ -43,7 +43,7 @@ final class PortraitSplitDeviceChecks {
         snapshot = new JSONObject(options.getJSONObject("preferences").toString())
             .put("scheme", "quanpin").put("touch_keyboard_layout", "twenty_six_key")
             .put("default_ime_mode", "chinese").put("ime_mode_scope", "global")
-            .put("learning", false).put("cloud_candidates", false).put("touch_spelling_position", "editor")
+            .put("learning", false).put("cloud_candidates", false).put("touch_spelling_position", "candidate_bar")
             .put("touch_keyboard_schemes", new JSONObject().put("enabled", new JSONArray().put("quanpin"))
                 .put("selected", "quanpin"));
         JSONObject localDocument = savedLocal == null ? new JSONObject().put("version", 1).put("settings", new JSONObject())
