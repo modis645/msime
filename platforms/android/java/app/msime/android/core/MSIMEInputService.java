@@ -2571,6 +2571,8 @@ public final class MSIMEInputService extends InputMethodService {
                 return new EngineStartOptions(optionsText, null);
             // 读实时偏好之前把本机旧的长空格和数字行设置迁进共享偏好，这次会话就按迁移后的底行和数字行画。
             KeyLayoutStyleMigration.migrate(this, directory);
+            // 这个精简版删掉了翻译服务和云剪贴板两页，第一次跑到时把它们和剪贴板条数的旧值收成出厂值。
+            PinyinDefaultsMigration.migrate(this);
             String response = candidateSkinResolver.read(directory);
             JSONObject envelope = new JSONObject(response);
             JSONObject live = JsonPolicy.strictTrue(envelope.opt("ok"))
