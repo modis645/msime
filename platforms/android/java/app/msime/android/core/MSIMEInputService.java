@@ -2850,9 +2850,14 @@ public final class MSIMEInputService extends InputMethodService {
         return preferences != null && preferences.optBoolean(ShuangpinKeyHintPolicy.PREFERENCE_KEY, false);
     }
 
-    /** 没有偏好或旧文档里没有这个键时按关（画「分词」）：产品默认由宿主定，核心层仍是上游的保留 ⇧。 */
+    /**
+     * 26 键第三排左端固定画「分词」，不再看 `touch_quanpin_shift`。
+     *
+     * <p>核心层把这个键的出厂值写成保留 ⇧（桌面沿用它），全新安装写出来的第一份文档就带着它；而「组字保留 ⇧」
+     * 的设置行在精简版里已经删掉，用户改不回来。沙鸥拼音的键面口径是「分词」，所以宿主这一层直接定死。
+     */
     private static boolean quanpinShiftFrom(JSONObject preferences) {
-        return preferences != null && preferences.optBoolean(QuanpinSeparatorPolicy.PREFERENCE_KEY, false);
+        return false;
     }
 
     /** 三类键面的底行样式；没有偏好、缺键或不认识的写法都按标准底行，与 client-core 的宽松读取一致。 */
