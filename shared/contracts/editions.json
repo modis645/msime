@@ -127,8 +127,8 @@
     {
       "id": "pinyin",
       "display_name": {
-        "zh-Hans": "沙鸥拼音",
-        "en": "Sandgull Pinyin"
+        "zh-Hans": "幻影拼音",
+        "en": "Phantom Pinyin"
       },
       "input_schemes": [
         "quanpin"
