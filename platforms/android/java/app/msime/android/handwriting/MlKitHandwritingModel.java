@@ -40,7 +40,7 @@ public final class MlKitHandwritingModel {
 
     /** 删掉已装的模型，腾出它占的存储（中文手写模型约 20–30 MB）；删完回读一次状态，只有确实删掉才报未装。 */
     public static void delete(Listener listener) {
-        RemoteModelManager.getInstance().deleteModel(model())
+        RemoteModelManager.getInstance().deleteDownloadedModel(model())
             .addOnCompleteListener(task -> check(listener));
     }
 
