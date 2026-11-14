@@ -5,7 +5,7 @@ public final class LetterHintTableSmoke {
         check("…".equals(LetterHintTable.hint("x"))
                 && "、".equals(LetterHintTable.hint("c")),
             "中文字母角标的实际提交值保留省略号和顿号");
-        String rows = "q1w2e3r4t5y6u7i8o9p0a@s#d¥f%g&h*j(k)l\"z~x…c、v?b!n-m/";
+        String rows = "q1w2e3r4t5y6u7i8o9p0a@s#d$f%g&h*j(k)l\"z~x…c、v?b!n-m/";
         int count = 0;
         for (int index = 0; index < rows.length(); index += 2) {
             String letter = rows.substring(index, index + 1);
