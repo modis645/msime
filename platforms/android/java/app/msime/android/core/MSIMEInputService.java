@@ -1632,7 +1632,13 @@ public final class MSIMEInputService extends InputMethodService {
         }
     }
 
+    @Override public void onBindInput() {
+        super.onBindInput();
+        ImeStartupProbe.stage(this, startupProbeCreateAt, "bindInput", null);
+    }
+
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
+        ImeStartupProbe.stage(this, startupProbeCreateAt, "startInput", null);
         // restart 保留组字也属于新的焦点边界，旧照片和识别回调不能跨过去。
         if (imeOcr != null) imeOcr.close();
         cancelPendingCompositionMarkerLoss();
@@ -1893,9 +1899,13 @@ public final class MSIMEInputService extends InputMethodService {
         synchronizeReplyKeyboard();
     }
 
+    /** 这次进程的 onCreate 起点（uptime 毫秒），给启动自检的绑定点用；还没进 onCreate 时为 -1。 */
+    private long startupProbeCreateAt = -1;
+
     // One reporting session per keyboard process: a crash here is recorded against it, and a session that ends through onDestroy counts as a normal one.
     @Override public void onCreate() {
         long createStartedAt = SystemClock.uptimeMillis();
+        startupProbeCreateAt = createStartedAt;
         // 拆出去的构建与渲染类持有本服务；在 onCreate 里创建，构造期间不把 this 交出去。
         imeToolbar = new ImeToolbar(this);
         imeCompositionEditor = new ImeCompositionEditor(this);
@@ -1985,6 +1995,7 @@ public final class MSIMEInputService extends InputMethodService {
     }
 
     @Override public void onStartInputView(EditorInfo info, boolean restarting) {
+        ImeStartupProbe.stage(this, startupProbeCreateAt, "startInputView", null);
         super.onStartInputView(info, restarting);
         armFirstFrameWait();
         // 反馈必须在第一下按键前生效，不能被延迟刷新的组字保护跳过。
@@ -2217,6 +2228,8 @@ public final class MSIMEInputService extends InputMethodService {
     }
 
     @Override public void onDestroy() {
+        // 走到这里算正常退出：删掉存活标记，下一次启动才不会被记成「被系统杀死」。
+        ImeStartupProbe.cleanExit(this);
         if (readAloudSpeaker != null) readAloudSpeaker.shutdown();
         if (imeOcr != null) imeOcr.destroy();
         operationNotice.cancel();
