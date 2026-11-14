@@ -98,7 +98,7 @@ public final class AndroidLocalSettings {
     public static final String CLIPBOARD_DELETE_AUTHENTICATION = "platform.android.clipboard_delete_authentication";
     /** 「复制后自动显示快捷键」（#10079）：最近复制那一行在预览右边多一个分词或分类快捷键，默认开，好让用户知道有这个功能；最近复制不显示时它也不显示。只在本机。 */
     public static final String CLIPBOARD_SUGGESTION_ACTION = "platform.android.clipboard_suggestion_action";
-    /** 复制后快捷键的功能（{@link RecentClipboardSuggestion#quickAction}）：`segment` 分词、`category` 移动分类，默认分类。只在本机。 */
+    /** 复制后快捷键的功能（{@link RecentClipboardSuggestion#quickAction}）：`segment` 分词、`category` 移动分类，默认分词。只在本机。 */
     public static final String CLIPBOARD_SUGGESTION_ACTION_KIND = "platform.android.clipboard_suggestion_action_kind";
     /** 旧版的「数字行」（#6022），默认关，只在本机。现在由共享偏好 `touch_number_row` 接替，这个键只由 {@link KeyLayoutStyleMigration} 读一次、迁完即删；同步的 `platform.android.number_row` 与它同名，但走共享偏好，不经这个文件。 */
     public static final String NUMBER_ROW = "platform.android.number_row";
@@ -264,7 +264,7 @@ public final class AndroidLocalSettings {
             ClipboardUndoPolicy.MIN_SECONDS, ClipboardUndoPolicy.MAX_SECONDS, 1);
         bool(CLIPBOARD_DELETE_AUTHENTICATION, false, false);
         bool(CLIPBOARD_SUGGESTION_ACTION, true, false);
-        choice(CLIPBOARD_SUGGESTION_ACTION_KIND, RecentClipboardSuggestion.ACTION_CATEGORY, false,
+        choice(CLIPBOARD_SUGGESTION_ACTION_KIND, RecentClipboardSuggestion.ACTION_SEGMENT, false,
             RecentClipboardSuggestion.ACTION_SEGMENT, RecentClipboardSuggestion.ACTION_CATEGORY);
         bool(NUMBER_ROW, false, false);
         choice(NINE_KEY_SWIPE, NineKeySwipePolicy.OFF, false, NineKeySwipePolicy.OFF, SwipeHintPolicy.UP,
