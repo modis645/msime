@@ -507,20 +507,6 @@ public class KeyboardOptionsPage extends ReloadingDetailPage {
         };
     }
 
-    private static String spellingPositionLabel(String value) {
-        return CandidatePreeditStylePolicy.keepsSpellingOnKeyboard(value) ? "候选栏" : "输入框";
-    }
-
-    private void pickSpellingPosition(String current) {
-        boolean candidateBar = CandidatePreeditStylePolicy.keepsSpellingOnKeyboard(current);
-        OptionSheet sheet = new OptionSheet(requireContext(), "拼音显示位置", null);
-        sheet.option("输入框", !candidateBar,
-            () -> savePreference("touch_spelling_position", CandidatePreeditStylePolicy.EDITOR));
-        sheet.option("候选栏", candidateBar,
-            () -> savePreference("touch_spelling_position", CandidatePreeditStylePolicy.CANDIDATE_BAR));
-        sheet.show();
-    }
-
     /** 当前方案的布局经 {@link SchemePreferences#withScheme} 与输入页、引导页按同一契约保存。 */
     private void applyScheme(KeyboardScheme scheme) {
         HostTask.run(this, context -> {
