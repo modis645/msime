@@ -253,7 +253,8 @@ public final class OnboardingActivity extends AppCompatActivity {
         if (steps.length == 0 || page != 0) return;
         Boolean enabled = ImeSetup.enabledState(this);
         Boolean current = ImeSetup.currentState(this);
-        if (enabled == imeEnabledSeen && current == imeCurrentSeen) return;
+        if (java.util.Objects.equals(enabled, imeEnabledSeen)
+                && java.util.Objects.equals(current, imeCurrentSeen)) return;
         render(false);
     }
 
