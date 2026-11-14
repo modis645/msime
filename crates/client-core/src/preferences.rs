@@ -1981,8 +1981,9 @@ pub struct Preferences {
     /// Touch-keyboard height adjustment in density-independent pixels.
     #[serde(default)]
     pub touch_keyboard_height_adjustment: i8,
-    /// Show a direct voice-result entry in touch-keyboard toolbars.
-    #[serde(default)]
+    /// Show a direct voice-result entry in touch-keyboard toolbars. 沙鸥拼音出厂即打开：缺这个键的旧文档也按开读，
+    /// 真值是 `true` 时不写进文档，等于默认值不落盘。
+    #[serde(default = "enabled_by_default", skip_serializing_if = "is_true")]
     pub touch_voice_shortcut: bool,
     /// 九宫格数字层按电话还是计算器排列；字母层不受影响。
     #[serde(default)]
