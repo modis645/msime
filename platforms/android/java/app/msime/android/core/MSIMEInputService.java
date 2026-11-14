@@ -3572,7 +3572,8 @@ public final class MSIMEInputService extends InputMethodService {
         int savedHeightAdjustment = heightAdjustmentFrom(preferences);
         // 键盘里正在「键盘调整」时，同步或设置页写来的新快照不能把预览覆盖回去（那样确认时高度已经和保存值相同，什么也不会存下）。
         int nextHeightAdjustment = keyboardAdjustActive ? touchKeyboardHeightAdjustment : savedHeightAdjustment;
-        boolean nextVoiceShortcut = preferences.optBoolean("touch_voice_shortcut", false);
+        // 沙鸥拼音的工具栏语音入口出厂即开，文档里为真时不写这个键：缺键按开读，与设置页的缺省一致。
+        boolean nextVoiceShortcut = preferences.optBoolean("touch_voice_shortcut", true);
         boolean nextShuangpinKeyHints = shuangpinKeyHintsFrom(preferences);
         boolean nextQuanpinShift = quanpinShiftFrom(preferences);
         PredictionButtonsPolicy.Style nextPredictionButtons = PredictionButtonsPolicy.Style.parse(
@@ -8287,7 +8288,7 @@ public final class MSIMEInputService extends InputMethodService {
                 acceptedPreferences, "touch_key_spacing_tenths", -1)) != touchKeySpacingTenths
             || KeyboardSpacingPolicy.rowSpacing(NumberPolicy.strictInt(
                 acceptedPreferences, "touch_row_spacing_tenths", -1)) != touchRowSpacingTenths
-            || acceptedPreferences.optBoolean("touch_voice_shortcut", false)
+            || acceptedPreferences.optBoolean("touch_voice_shortcut", true)
                 != touchVoiceShortcutEnabled;
         boolean heightChanged = reset || acceptedPreferences == null
             || heightAdjustmentFrom(acceptedPreferences) != touchKeyboardHeightAdjustment;
