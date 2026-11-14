@@ -312,7 +312,7 @@ public final class SettingsDeviceSmoke extends DeviceSmoke {
             stage = "React reset keyboard geometry";
             js("window.confirm = () => true; (" + RESET_KEYBOARD_SETTINGS + ").click(); true");
             awaitJs("(" + KEYBOARD_HEIGHT + ").value === '0' && (" + KEY_SPACING
-                + ").value === '60' && (" + ROW_SPACING + ").value === '70' && !("
+                + ").value === '60' && (" + ROW_SPACING + ").value === '70' && ("
                 + VOICE_SHORTCUT + ").checked");
             awaitJs("!document.querySelector('button[type=submit]').disabled");
             js("document.querySelector('button[type=submit]').click(); true");
@@ -333,7 +333,7 @@ public final class SettingsDeviceSmoke extends DeviceSmoke {
             awaitJs("!(" + RELOAD_BUTTON + ").disabled && ("
                 + PUNCTUATION_CHECKBOX + ").checked === " + !before + " && ("
                 + KEYBOARD_HEIGHT + ").value === '0' && (" + KEY_SPACING
-                + ").value === '60' && (" + ROW_SPACING + ").value === '70' && !("
+                + ").value === '60' && (" + ROW_SPACING + ").value === '70' && ("
                 + VOICE_SHORTCUT + ").checked");
             stage = "cross-process system input uses saved preferences";
             restartIme();
