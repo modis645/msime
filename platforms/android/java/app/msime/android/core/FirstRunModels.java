@@ -29,12 +29,12 @@ public final class FirstRunModels {
         ThreadPolicy.namedFactory("msime-first-run-models"));
     private static final AtomicBoolean RUNNING = new AtomicBoolean();
     private static final AtomicBoolean LISTENING = new AtomicBoolean();
+    private static volatile Context application;
     /** 资源包服务跑完一个就再走一轮，接着排下一个。 */
     private static final ResourcePackService.Listener FINISHED = (pack, finished) -> {
         Context context = application;
         if (finished && context != null) startIfNeeded(context);
     };
-    private static volatile Context application;
 
     private FirstRunModels() { }
 
